@@ -383,5 +383,10 @@ public interface ILogger extends AutoCloseable {
      * @param level Diagnostic level.
      */
     public void setLevel(final DiagnosticLevel level);
+
+    /**
+     * Return current session id.
+     */
+    public String getSessionId();
 }
 

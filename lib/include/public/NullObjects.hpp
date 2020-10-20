@@ -120,8 +120,11 @@ namespace MAT_NS_BEGIN
 
         virtual void SetLevel(uint8_t /*level*/) override {};
 
+        virtual std::string const& GetSessionId() const override { return m_sessionId; }
+
     private:
         NullEventFilterCollection m_filters;
+        std::string               m_sessionId;
     };
 
     class NullDataViewerCollection : public IDataViewerCollection

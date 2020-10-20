@@ -7,8 +7,8 @@ cmake_minimum_required(VERSION 3.10.2)
 set(CMAKE_CXX_STANDARD 11)
 
 # Enable Azure Monitor / Application Insights end-point support
-option(BUILD_AZMON        "Build for Azure Monitor" YES)
-option(BUILD_PRIVACYGUARD "Build Privacy Guard"     YES)
+option(BUILD_AZMON        "Build for Azure Monitor" NO)
+option(BUILD_PRIVACYGUARD "Build Privacy Guard"     NO)
 
 string(REPLACE "/lib/android_build/maesdk/src/main/cpp" "" SDK_ROOT ${CMAKE_SOURCE_DIR})
 

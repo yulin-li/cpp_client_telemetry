@@ -944,6 +944,11 @@ namespace MAT_NS_BEGIN
             });
         }
     }
+
+    std::string const& Logger::GetSessionId() const
+    {
+      return m_sessionId;
+    }
 }
 MAT_NS_END
 

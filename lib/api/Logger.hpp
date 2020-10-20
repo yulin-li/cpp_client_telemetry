@@ -226,6 +226,12 @@ namespace MAT_NS_BEGIN
         /// <summary>Switch from active to shut-down state</summary>
         virtual void RecordShutdown();
 
+        /// <summary>
+        /// Gets the unique Session ID of the current session
+        /// </summary>
+        /// <returns>The unique Session ID of the current session</returns>
+        virtual std::string const& GetSessionId() const override;
+
        protected:
         bool applyCommonDecorators(::CsProtocol::Record& record,
                                    EventProperties const& properties,

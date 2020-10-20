@@ -1379,6 +1379,16 @@ class Logger implements ILogger {
     clearNative();
   }
 
+  private native String nativeGetSessionId(long nativeLoggerPtr);
+
+  /**
+   * Return current session id.
+   */
+  @Override
+  public String getSessionId() {
+    return nativeGetSessionId(m_nativePtr);
+  }
+
   /**
    * Package-private method to get the native pointer for ILogger*
    * @return long representing the native pointer for ILogger *
