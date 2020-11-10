@@ -62,9 +62,9 @@
 
 /*!
 @brief Sets the internal SDK debugging trace level.
-@param one of the ACTTraceLevel values.
+@param traceLevel one of the ACTTraceLevel values.
 */
-+(void)setTraceLevel:(int)TraceLevel;
++(void)setTraceLevel:(int)traceLevel;
 
 /*!
 @brief Returns true if tracing is enabled.
