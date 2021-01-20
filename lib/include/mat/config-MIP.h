@@ -14,6 +14,6 @@
 #if defined(_WIN32)
 #define WIN_DESKTOP
 #endif
-#define HAVE_MAT_DEFAULT_HTTP_CLIENT
+/* #define HAVE_MAT_DEFAULT_HTTP_CLIENT */
 #define HAVE_CS3
 
