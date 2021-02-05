@@ -382,6 +382,7 @@ linktest/cmake_install.cmake
 linktest/linktest
 offlinestorage.db*
 sqlite-autoconf*
+sqlite/build/*
 wrappers/go/example
 wrappers/go/offlinestorage.*
 zlib/contrib/**/*.obj
