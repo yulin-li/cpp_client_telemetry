@@ -89,10 +89,6 @@ namespace MAT_NS_BEGIN {
             LOG_TRACE("Scheduled upload aborted, no upload.");
             return;
         }
-        if (delayInMs < 0 || m_timerdelay < 0) {
-            LOG_TRACE("Negative delayInMs or m_timerdelay, no upload");
-            return; // transmission prohibited by profile
-        }
         if (uploadCount() >= static_cast<uint32_t>(m_config[CFG_INT_MAX_PENDING_REQ]) )
         {
             LOG_TRACE("Maximum number of HTTP requests reached");
