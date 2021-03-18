@@ -1,4 +1,7 @@
-// Copyright (c) Microsoft. All rights reserved.
+//
+// Copyright (c) 2015-2020 Microsoft Corporation and Contributors.
+// SPDX-License-Identifier: Apache-2.0
+//
 #ifndef SOCKETTOOLS_HPP
 #define SOCKETTOOLS_HPP
 
@@ -310,13 +313,13 @@ class Socket
     {
         assert(m_sock != Invalid);
         int flags = 0;
-        return ::recv(m_sock, reinterpret_cast<char*>(buffer), size, flags);
+        return static_cast<int>(::recv(m_sock, reinterpret_cast<char*>(buffer), size, flags));
     }
 
     int send(void const* buffer, unsigned size)
     {
         assert(m_sock != Invalid);
-        return ::send(m_sock, reinterpret_cast<char const*>(buffer), size, 0);
+        return static_cast<int>(::send(m_sock, reinterpret_cast<char const*>(buffer), size, 0));
     }
 
     bool bind(SocketAddr const& addr)
@@ -455,4 +458,5 @@ struct SocketData
 
 }
 #endif
+
 

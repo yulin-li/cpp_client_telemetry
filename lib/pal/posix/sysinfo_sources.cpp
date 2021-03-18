@@ -1,4 +1,7 @@
-// Copyright (c) Microsoft Corporation. All rights reserved.
+//
+// Copyright (c) 2015-2020 Microsoft Corporation and Contributors.
+// SPDX-License-Identifier: Apache-2.0
+//
 /*
  * sysinfo_sources.cpp
  *
@@ -37,6 +40,13 @@
 
 #include "EventProperty.hpp"
 
+#if defined(__linux__)
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE /* for tm_gmtoff and tm_zone */
+#endif
+#include <time.h>
+#endif
+
 #ifdef __APPLE__
 #include <CoreFoundation/CoreFoundation.h>
 #include <mach-o/dyld.h>
@@ -60,12 +70,6 @@ void get_platform_uuid(char * buf, int bufSize)
 }
 
 #endif // TARGET_MAC_OS
-
-#if TARGET_OS_IPHONE
-
-#include "sysinfo_utils_ios.hpp"
-
-#endif // TARGET_OS_IPHONE
 
 std::string get_app_name()
 {
@@ -208,6 +212,18 @@ sysinfo_sources_impl::sysinfo_sources_impl() : sysinfo_sources()
     add("osBuild", {"/proc/version", "(.*)[\n]+"});
     // add("proc_loadavg", {"/proc/loadavg", "(.*)[\n]*"});
     // add("proc_uptime", {"/proc/uptime", "(.*)[\n]*"});
+
+    time_t t = time(NULL);
+    struct tm lt = { 0 };
+    localtime_r(&t, &lt);
+    int hh = lt.tm_gmtoff / 3600;
+    int mm = (lt.tm_gmtoff / 60) % 60;
+    std::ostringstream oss;
+    oss << ((hh<0)?"-":"+"); // +hh:mm or -hh:mm
+    oss << std::setw(2) << std::setfill('0') << std::abs(hh);
+    oss << std::setw(1) << ":";
+    oss << std::setw(2) << std::setfill('0') << std::abs(mm);
+    cache["tz"] = oss.str();
 #endif
 
 #if defined(__MINGW32__) || defined(__MSYS__)
@@ -218,13 +234,8 @@ sysinfo_sources_impl::sysinfo_sources_impl() : sysinfo_sources()
 #endif
 
 #if defined(__APPLE__)
-    // FIXME: [MG] - This is not the most elegant way of obtaining it
     cache["devMake"] = "Apple";
-#if TARGET_OS_IPHONE
     cache["devModel"] = GetDeviceModel();
-#else
-    cache["devModel"] = Exec("sysctl hw.model | awk '{ print $2 }'");
-#endif // TARGET_OS_IPHONE
     cache["osName"] = GetDeviceOsName();
     cache["osVer"] = GetDeviceOsVersion();
     cache["osRel"] = GetDeviceOsRelease();
@@ -266,20 +277,16 @@ sysinfo_sources_impl::sysinfo_sources_impl() : sysinfo_sources()
 #ifndef __APPLE__
     add("appId", {"/proc/self/cmdline", "(.*)[ ]*.*[\n]*"});
 #else
-    cache["appId"] = get_app_name(); // TODO: [MG] - verify this path
+    cache["appId"] = get_app_name();
 #endif
 
     if (!get("devId").compare(""))
     {
 #ifdef __APPLE__
+        std::string contents = GetDeviceId();
 #if TARGET_OS_IPHONE
         cache["devId"] = "i:";
-        std::string contents = GetDeviceId();
 #else
-        // Microsoft Edge bug 21528330
-        // We were unable to use get_platform_uuid to obtain Device Id
-        // in render processes.
-        std::string contents = Exec(R"(ioreg -d2 -c IOPlatformExpertDevice | awk -F\" '/IOPlatformUUID/{print $(NF-1)}')");
         cache["devId"] = "u:";
 #endif // TARGET_OS_IPHONE
         cache["devId"] += MAT::GUID_t(contents.c_str()).to_string();

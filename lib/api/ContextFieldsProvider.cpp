@@ -1,12 +1,14 @@
-// Copyright (c) Microsoft. All rights reserved.
-#include "pal/PAL.hpp"
+//
+// Copyright (c) 2015-2020 Microsoft Corporation and Contributors.
+// SPDX-License-Identifier: Apache-2.0
+//
 
 #include "ContextFieldsProvider.hpp"
 #include "LogSessionData.hpp"
+#include "pal/PAL.hpp"
+#include "utils/StringUtils.hpp"
 
-#include "utils/Utils.hpp"
-
-namespace ARIASDK_NS_BEGIN
+namespace MAT_NS_BEGIN
 {
 
     ContextFieldsProvider::ContextFieldsProvider()
@@ -125,13 +127,13 @@ namespace ARIASDK_NS_BEGIN
 
             if (!m_commonContextFields.empty())
             {
-                if (m_commonContextFields.find(COMMONFIELDS_APP_EXPERIMENT_IMPRESSION_ID) != m_commonContextFields.end())
+                if (m_commonContextFields.find(SESSION_IMPRESSION_ID) != m_commonContextFields.end())
                 {
                     CsProtocol::Value temp;
-                    EventProperty prop = m_commonContextFields[COMMONFIELDS_APP_EXPERIMENT_IMPRESSION_ID];
+                    EventProperty prop = m_commonContextFields[SESSION_IMPRESSION_ID];
                     temp.stringValue = prop.as_string;
 
-                    ext[COMMONFIELDS_APP_EXPERIMENT_IMPRESSION_ID] = temp;
+                    ext[SESSION_IMPRESSION_ID] = temp;
                 }
 
                 if (m_commonContextFields.find(COMMONFIELDS_APP_EXPERIMENTETAG) != m_commonContextFields.end())
@@ -148,6 +150,13 @@ namespace ARIASDK_NS_BEGIN
                 if (hasAppId)
                 {
                     record.extApp[0].id = iter->second.as_string;
+                }
+
+                iter = m_commonContextFields.find(COMMONFIELDS_APP_ENV);
+                bool hasAppEnv = (iter != m_commonContextFields.end());
+                if (hasAppEnv)
+                {
+                    record.extApp[0].env = iter->second.as_string;
                 }
 
                 iter = m_commonContextFields.find(COMMONFIELDS_APP_NAME);
@@ -211,6 +220,12 @@ namespace ARIASDK_NS_BEGIN
                     record.extDevice[0].localId = temp;
                 }
 
+                iter = m_commonContextFields.find(COMMONFIELDS_DEVICE_ORGID);
+                if (iter != m_commonContextFields.end())
+                {
+                    record.extDevice[0].orgId = iter->second.as_string;
+                }
+
                 iter = m_commonContextFields.find(COMMONFIELDS_DEVICE_MAKE);
                 if (iter != m_commonContextFields.end())
                 {
@@ -264,12 +279,6 @@ namespace ARIASDK_NS_BEGIN
                 if (iter != m_commonContextFields.end())
                 {
                     record.extLoc[0].timezone = iter->second.as_string;
-                }
-
-                iter = m_commonContextFields.find(COMMONFIELDS_USER_MSAID);
-                if (iter != m_commonContextFields.end())
-                {
-                    record.extDevice[0].authSecId = iter->second.as_string;
                 }
 
                 iter = m_commonContextFields.find(COMMONFIELDS_NETWORK_COST);
@@ -457,4 +466,5 @@ namespace ARIASDK_NS_BEGIN
         return m_customContextFields;
     }
 
-} ARIASDK_NS_END
+} MAT_NS_END
+

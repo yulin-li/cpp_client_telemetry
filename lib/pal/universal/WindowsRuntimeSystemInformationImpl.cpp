@@ -1,3 +1,7 @@
+//
+// Copyright (c) 2015-2020 Microsoft Corporation and Contributors.
+// SPDX-License-Identifier: Apache-2.0
+//
 #include "pal/PAL.hpp"
 
 #include <collection.h>
@@ -21,12 +25,12 @@ namespace PAL_NS_BEGIN {
     const string WindowsPhoneOSName = "Windows for Phones";
     const string DeviceFamily_Mobile = "Windows.Mobile";
 
-    std::shared_ptr<ISystemInformation> SystemInformationImpl::Create()
+    std::shared_ptr<ISystemInformation> SystemInformationImpl::Create(IRuntimeConfig& configuration)
     {
-        return std::make_shared<SystemInformationImpl>();
+        return std::make_shared<SystemInformationImpl>(configuration);
     }
 
-    SystemInformationImpl::SystemInformationImpl()
+    SystemInformationImpl::SystemInformationImpl(IRuntimeConfig& /*configuration*/)
         : m_info_helper()
     {
         auto version = Package::Current->Id->Version;
@@ -119,3 +123,4 @@ namespace PAL_NS_BEGIN {
     }
 
 } PAL_NS_END
+

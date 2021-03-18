@@ -1,4 +1,7 @@
-// Copyright (c) Microsoft Corporation. All rights reserved.
+//
+// Copyright (c) 2015-2020 Microsoft Corporation and Contributors.
+// SPDX-License-Identifier: Apache-2.0
+//
 #define LOG_MODULE DBG_API
 #include "pal/PAL.hpp"
 #include "pal/DeviceInformationImpl.hpp"
@@ -23,7 +26,7 @@ namespace PAL_NS_BEGIN {
     }
 
     ///// IDeviceInformation API
-    DeviceInformationImpl::DeviceInformationImpl() :
+    DeviceInformationImpl::DeviceInformationImpl(IRuntimeConfig& configuration) :
                                 m_info_helper()
     {
 #if defined(ARCH_ARM)
@@ -60,11 +63,12 @@ namespace PAL_NS_BEGIN {
     }
 #endif
 
-    std::shared_ptr<IDeviceInformation> DeviceInformationImpl::Create()
+    std::shared_ptr<IDeviceInformation> DeviceInformationImpl::Create(IRuntimeConfig& configuration)
     {
-        return std::make_shared<DeviceInformationImpl>();
+        return std::make_shared<DeviceInformationImpl>(configuration);
     }
 
     DeviceInformationImpl::~DeviceInformationImpl() {}
 
 } PAL_NS_END
+

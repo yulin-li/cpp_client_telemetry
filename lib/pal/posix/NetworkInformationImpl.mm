@@ -1,16 +1,19 @@
-// Copyright (c) Microsoft Corporation. All rights reserved.
+//
+// Copyright (c) 2015-2020 Microsoft Corporation and Contributors.
+// SPDX-License-Identifier: Apache-2.0
+//
 #define LOG_MODULE DBG_PAL
 #include "pal/PAL.hpp"
 #include "pal/NetworkInformationImpl.hpp"
 
 #import <Network/Network.h>
-#import "Reachability.h"
+#import "ODWReachability.h"
 
 namespace PAL_NS_BEGIN {
 
-    NetworkInformationImpl::NetworkInformationImpl(bool isNetDetectEnabled) :
+    NetworkInformationImpl::NetworkInformationImpl(IRuntimeConfig& configuration) :
         m_info_helper(),
-        m_isNetDetectEnabled(isNetDetectEnabled) {};
+        m_isNetDetectEnabled(configuration[CFG_BOOL_ENABLE_NET_DETECT]) {};
 
     NetworkInformationImpl::~NetworkInformationImpl() {};
 
@@ -22,7 +25,7 @@ namespace PAL_NS_BEGIN {
         ///
         /// </summary>
         /// <param name="isNetDetectEnabled"></param>
-        NetworkInformation(bool isNetDetectEnabled);
+        NetworkInformation(IRuntimeConfig& configuration);
 
         /// <summary>
         ///
@@ -68,12 +71,12 @@ namespace PAL_NS_BEGIN {
         nw_path_monitor_t m_monitor = nil;
 
         // iOS 11 and older
-        Reachability* m_reach = nil;
+        ODWReachability* m_reach = nil;
         id m_notificationId = nil;
     };
 
-    NetworkInformation::NetworkInformation(bool isNetDetectEnabled) :
-        NetworkInformationImpl(isNetDetectEnabled)
+    NetworkInformation::NetworkInformation(IRuntimeConfig& configuration) :
+        NetworkInformationImpl(configuration)
     {
         m_type = NetworkType_Unknown;
         m_cost = NetworkCost_Unknown;
@@ -81,7 +84,7 @@ namespace PAL_NS_BEGIN {
 
     NetworkInformation::~NetworkInformation() noexcept
     {
-        if (@available(iOS 12.0, *))
+        if (@available(macOS 10.14, iOS 12.0, *))
         {
             if (m_isNetDetectEnabled)
             {
@@ -102,7 +105,36 @@ namespace PAL_NS_BEGIN {
     {
         auto weak_this = std::weak_ptr<NetworkInformation>(shared_from_this());
 
-        if (@available(iOS 12.0, *))
+        m_reach = [ODWReachability reachabilityForInternetConnection];
+        void (^block)(NSNotification*) = ^(NSNotification*)
+        {
+            auto strong_this = weak_this.lock();
+            if (!strong_this)
+            {
+                return;
+            }
+
+            // NetworkCost information is not available until iOS 12.
+            // Just make the best guess here.
+            switch (m_reach.currentReachabilityStatus)
+            {
+                case NotReachable:
+                    strong_this->UpdateType(NetworkType_Unknown);
+                    strong_this->UpdateCost(NetworkCost_Unknown);
+                    break;
+                case ReachableViaWiFi:
+                    strong_this->UpdateType(NetworkType_Wifi);
+                    strong_this->UpdateCost(NetworkCost_Unmetered);
+                    break;
+                case ReachableViaWWAN:
+                    strong_this->UpdateType(NetworkType_WWAN);
+                    strong_this->UpdateCost(NetworkCost_Metered);
+                    break;
+            }
+        };
+        block(nil); // Update the initial status.
+        
+        if (@available(macOS 10.14, iOS 12.0, *))
         {
             m_monitor = nw_path_monitor_create();
             nw_path_monitor_set_queue(m_monitor, dispatch_get_global_queue(QOS_CLASS_BACKGROUND, 0));
@@ -133,7 +165,7 @@ namespace PAL_NS_BEGIN {
                         type = NetworkType_Wired;
                     }
                     cost = nw_path_is_expensive(path) ? NetworkCost_Metered : NetworkCost_Unmetered;
-                    if (@available(iOS 13.0, *))
+                    if (@available(macOS 10.15, iOS 13.0, *))
                     {
                         if (nw_path_is_constrained(path))
                         {
@@ -154,46 +186,15 @@ namespace PAL_NS_BEGIN {
                 nw_path_monitor_cancel(m_monitor);
             }
         }
-        else
+        else if (m_isNetDetectEnabled)
         {
-            m_reach = [Reachability reachabilityForInternetConnection];
-            void (^block)(NSNotification*) = ^(NSNotification*)
-            {
-                auto strong_this = weak_this.lock();
-                if (!strong_this)
-                {
-                    return;
-                }
-
-                // NetworkCost information is not available until iOS 12.
-                // Just make the best guess here.
-                switch (m_reach.currentReachabilityStatus)
-                {
-                    case NotReachable:
-                        strong_this->UpdateType(NetworkType_Unknown);
-                        strong_this->UpdateCost(NetworkCost_Unknown);
-                        break;
-                    case ReachableViaWiFi:
-                        strong_this->UpdateType(NetworkType_Wifi);
-                        strong_this->UpdateCost(NetworkCost_Unmetered);
-                        break;
-                    case ReachableViaWWAN:
-                        strong_this->UpdateType(NetworkType_WWAN);
-                        strong_this->UpdateCost(NetworkCost_Metered);
-                        break;
-                }
-            };
-            block(nil); // Update the initial status.
-            if (m_isNetDetectEnabled)
-            {
-                m_notificationId =
-                    [[NSNotificationCenter defaultCenter]
-                    addObserverForName: kReachabilityChangedNotification
-                    object: nil
-                    queue: nil
-                    usingBlock: block];
-                [m_reach startNotifier];
-            }
+            m_notificationId =
+                [[NSNotificationCenter defaultCenter]
+                addObserverForName: kNetworkReachabilityChangedNotification
+                object: nil
+                queue: nil
+                usingBlock: block];
+            [m_reach startNotifier];
         }
     }
 
@@ -215,11 +216,12 @@ namespace PAL_NS_BEGIN {
         }
     }
 
-    std::shared_ptr<INetworkInformation> NetworkInformationImpl::Create(bool isNetDetectEnabled)
+    std::shared_ptr<INetworkInformation> NetworkInformationImpl::Create(IRuntimeConfig& configuration)
     {
-        auto networkInformation = std::make_shared<NetworkInformation>(isNetDetectEnabled);
+        auto networkInformation = std::make_shared<NetworkInformation>(configuration);
         networkInformation->SetupNetDetect();
         return networkInformation;
     }
 
 } PAL_NS_END
+

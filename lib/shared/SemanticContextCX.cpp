@@ -1,3 +1,7 @@
+//
+// Copyright (c) 2015-2020 Microsoft Corporation and Contributors.
+// SPDX-License-Identifier: Apache-2.0
+//
 #include "pch.h"
 #include "SemanticContextCX.hpp"
 
@@ -13,6 +17,11 @@ namespace Microsoft {
                 SemanticContextImpl::SemanticContextImpl(MAT::ISemanticContext* semanticContextCore) :
                     m_semanticContextCore(semanticContextCore)
                 {
+                }
+
+                void SemanticContextImpl::AppEnv::set(String^ appEnv)
+                {
+                    m_semanticContextCore->SetAppEnv(FromPlatformString(appEnv));
                 }
 
                 void SemanticContextImpl::AppId::set(String^ appId)

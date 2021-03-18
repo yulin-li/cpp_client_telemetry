@@ -1,13 +1,16 @@
-// Copyright (c) Microsoft. All rights reserved.
+//
+// Copyright (c) 2015-2020 Microsoft Corporation and Contributors.
+// SPDX-License-Identifier: Apache-2.0
+//
 #ifndef IEVENTFILTERCOLLECTION_HPP
 #define IEVENTFILTERCOLLECTION_HPP
 
-#include "Version.hpp"
+#include "ctmacros.hpp"
 #include "IEventFilter.hpp"
 
 #include <memory>
 
-namespace ARIASDK_NS_BEGIN
+namespace MAT_NS_BEGIN
 {
     /// <summary>
     /// Inerface providing registration and unregistration functions for IEventFilters
@@ -41,7 +44,7 @@ namespace ARIASDK_NS_BEGIN
         /// Returns whether or not the event satisfies all registered IEventFilter's conditions
         /// </summary>
         /// <param name="properties">The full set of event properties that may be sent</param>
-        /// <returns>True if the event satisifes the all the registered ondtitions, false otherwise.</returns>
+        /// <returns>True if the event satisfies the all the registered ondtitions, false otherwise.</returns>
         virtual bool CanEventPropertiesBeSent(const EventProperties& properties) const noexcept = 0;
 
         /// <summary>
@@ -61,6 +64,6 @@ namespace ARIASDK_NS_BEGIN
         virtual bool Empty() const noexcept = 0;
     };
 
-} ARIASDK_NS_END
+} MAT_NS_END
 
 #endif // IEVENTFILTERCOLLECTION_HPP

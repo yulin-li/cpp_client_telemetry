@@ -8,6 +8,7 @@ message("${CMAKE_CURRENT_SOURCE_DIR}")
 
 set(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS} -O0 -ggdb -gdwarf-2 -std=c11")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O0 -ggdb -gdwarf-2 -std=c++11 -stdlib=libc++")
+option(BUILD_PRIVACYGUARD "Build Privacy Guard"     YES)
 
 # Point example to SDK dirs for x86_64 Desktop
 if(EXISTS "/usr/local/lib/libmat.a")
@@ -28,7 +29,7 @@ endif()
 set (PLATFORM_LIBS "")
 # Add flags for obtaining system UUID via IOKit
 if (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
-set (PLATFORM_LIBS "-framework Foundation -framework CoreFoundation -framework IOKit")
+set (PLATFORM_LIBS "-framework Foundation -framework CoreFoundation -framework IOKit -framework Network")
 endif()
 
 include_directories( 
@@ -41,7 +42,7 @@ foreach(dir ${dirs})
     message(STATUS "dir='${dir}'")
 endforeach()
 
-set(PLATFORM_FILES main.mm ODWLogManager.mm ODWLogger.mm ODWEventProperties.mm ODWLogConfiguration.mm)
+set(PLATFORM_FILES main.mm ODWLogManager.mm ODWLogger.mm ODWEventProperties.mm ODWLogConfiguration.mm ODWSemanticContext.mm)
 add_executable( sample ${PLATFORM_FILES} )
 target_link_libraries(sample ${MATSDK_LIB}/libmat.a curl z ${CMAKE_THREAD_LIBS_INIT} ${SQLITE3_LIB} ${PLATFORM_LIBS} dl)
 

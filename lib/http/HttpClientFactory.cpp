@@ -1,4 +1,7 @@
-// Copyright (c) Microsoft. All rights reserved.
+//
+// Copyright (c) 2015-2020 Microsoft Corporation and Contributors.
+// SPDX-License-Identifier: Apache-2.0
+//
 #include "mat/config.h"
 
 #ifdef HAVE_MAT_DEFAULT_HTTP_CLIENT
@@ -19,18 +22,16 @@
 #elif defined(MATSDK_PAL_CPP11)
   #if TARGET_OS_IPHONE || (defined(__APPLE__) && defined(APPLE_HTTP))
     #include "http/HttpClient_Apple.hpp"
-  #else
-  #ifdef ANDROID
-    #include "http/HttpClient_Android.hpp"
-  #else
+  #elif defined(HAVE_MAT_CURL_HTTP_CLIENT) || !defined(ANDROID)
     #include "http/HttpClient_Curl.hpp"
-  #endif
+  #elif defined(ANDROID)
+    #include "http/HttpClient_Android.hpp"
   #endif
 #else
   #error The library cannot work without an HTTP client implementation.
 #endif
 
-namespace ARIASDK_NS_BEGIN {
+namespace MAT_NS_BEGIN {
 
     MATSDK_LOG_INST_COMPONENT_CLASS(HttpClientFactory, "EventsSDK.HttpClientFactory", "Events telemetry client - HttpClientFactory class");
 
@@ -49,15 +50,20 @@ namespace ARIASDK_NS_BEGIN {
     }
 
 #endif
+#elif defined(HAVE_MAT_CURL_HTTP_CLIENT)
+    std::shared_ptr<IHttpClient> HttpClientFactory::Create() {
+        LOG_TRACE("Creating HttpClient_Curl");
+        return std::make_shared<HttpClient_Curl>();
+    }
 #elif defined(MATSDK_PAL_CPP11)
 #if TARGET_OS_IPHONE || (defined(__APPLE__) && defined(APPLE_HTTP))
     std::shared_ptr<IHttpClient> HttpClientFactory::Create() {
         LOG_TRACE("Creating HttpClient_Apple");
         return std::make_shared<HttpClient_Apple>();
     }
-#else
-#ifdef ANDROID
+#elif defined(ANDROID)
     std::shared_ptr<IHttpClient> HttpClientFactory::Create() {
+        LOG_TRACE("Creating HttpClient_Android");
         return HttpClient_Android::GetClientInstance();
     }
 #else
@@ -66,11 +72,12 @@ namespace ARIASDK_NS_BEGIN {
         return std::make_shared<HttpClient_Curl>();
     }
 #endif
-#endif
 #else
 #error The library cannot work without an HTTP client implementation.
 #endif
 
-} ARIASDK_NS_END
+} MAT_NS_END
 
-#endif // HAVE_MAT_DEFAULT_HTTP_CLIENT
+
+#endif
+

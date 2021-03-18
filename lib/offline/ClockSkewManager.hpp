@@ -1,3 +1,7 @@
+//
+// Copyright (c) 2015-2020 Microsoft Corporation and Contributors.
+// SPDX-License-Identifier: Apache-2.0
+//
 #ifndef CLOCKSKEWMANAGER_HPP
 #define CLOCKSKEWMANAGER_HPP
 
@@ -6,7 +10,7 @@
 #include <vector>
 #include <mutex>
 
-namespace ARIASDK_NS_BEGIN {
+namespace MAT_NS_BEGIN {
 
     class ClockSkewManager
     {
@@ -47,7 +51,7 @@ namespace ARIASDK_NS_BEGIN {
             if (!m_deltaReceived && m_pingSent)
             {
                int64_t timeSincePing = PAL::getUtcSystemTime() - m_pingSendTime;
-               if (timeSincePing > 30) //30 secs have passed sinse ping was sent, soemthing went wrong, disable clock skew
+               if (timeSincePing > 30) //30 secs have passed since ping was sent, something went wrong, disable clock skew
                {
                   SetDelta("");
                   return false;
@@ -89,5 +93,6 @@ namespace ARIASDK_NS_BEGIN {
         int64_t                 m_pingSendTime {};
     };
 
-} ARIASDK_NS_END
+} MAT_NS_END
 #endif
+

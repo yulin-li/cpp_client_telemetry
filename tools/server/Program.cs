@@ -1,11 +1,15 @@
+//
+// Copyright (c) 2015-2020 Microsoft Corporation and Contributors.
+// SPDX-License-Identifier: Apache-2.0
+//
 // System
-using System.IO;
 // AspNetCore
 using Microsoft.AspNetCore;
 using Microsoft.AspNetCore.Hosting;
 // Configuration and Logging
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using System.IO;
 
 namespace CommonSchema.Server
 {
@@ -27,7 +31,7 @@ namespace CommonSchema.Server
             .UseWebRoot(Path.Combine(Directory.GetCurrentDirectory(), "wwwroot"))
             .ConfigureAppConfiguration((hostingContext, config) =>
             {
-                IHostingEnvironment env = hostingContext.HostingEnvironment;
+                IWebHostEnvironment env = hostingContext.HostingEnvironment;
                 IConfigurationBuilder configurationBuilder = config
                 .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
                 .AddJsonFile($"appsettings.{env.EnvironmentName}.json", optional: true, reloadOnChange: true)

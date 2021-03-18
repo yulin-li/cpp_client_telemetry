@@ -1,9 +1,12 @@
-// Copyright (c) Microsoft Corporation. All rights reserved.
+//
+// Copyright (c) 2015-2020 Microsoft Corporation and Contributors.
+// SPDX-License-Identifier: Apache-2.0
+//
 #ifndef PAL_HPP
 #define PAL_HPP
 
 #include "mat/config.h"
-#include "Version.hpp"
+#include "ctmacros.hpp"
 #include "DebugTrace.hpp"
 
 #ifdef HAVE_MAT_EXP
@@ -12,6 +15,7 @@
 #define ECS_SUPP "No"
 #endif
 
+#include "api/IRuntimeConfig.hpp"
 #include "SystemInformationImpl.hpp"
 #include "NetworkInformationImpl.hpp"
 #include "DeviceInformationImpl.hpp"
@@ -53,14 +57,13 @@
 #include <thread>
 #include <memory>
 
-#include "api/IRuntimeConfig.hpp"
 #include "typename.hpp"
 #include "WorkerThread.hpp"
 
-namespace ARIASDK_NS_BEGIN
+namespace MAT_NS_BEGIN
 {
     void print_backtrace();
-} ARIASDK_NS_END
+} MAT_NS_END
 
 namespace PAL_NS_BEGIN
 {
@@ -93,7 +96,7 @@ namespace PAL_NS_BEGIN
 
         std::shared_ptr<MAT::ITaskDispatcher> getDefaultTaskDispatcher();
 
-        void initialize(IRuntimeConfig& configuration);
+        void initialize(MAT::IRuntimeConfig& configuration);
 
         void shutdown();
 
@@ -239,3 +242,4 @@ namespace PAL_NS_BEGIN
 } PAL_NS_END
 
 #endif
+

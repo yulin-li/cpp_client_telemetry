@@ -1,3 +1,7 @@
+//
+// Copyright (c) 2015-2020 Microsoft Corporation and Contributors.
+// SPDX-License-Identifier: Apache-2.0
+//
 #ifndef MEMORYSTORAGE_HPP
 #define MEMORYSTORAGE_HPP
 
@@ -13,13 +17,12 @@
 
 #include <algorithm>
 #include <memory>
-#include <atomic>
 #include <mutex>
 #include <map>
 #include <string>
 #include <unordered_set>
 
-namespace ARIASDK_NS_BEGIN {
+namespace MAT_NS_BEGIN {
 
     class MemoryStorage : public IOfflineStorage
     {
@@ -35,6 +38,8 @@ namespace ARIASDK_NS_BEGIN {
 
         virtual bool StoreRecord(StorageRecord const& record) override;
 
+        virtual size_t StoreRecords(std::vector<StorageRecord> & records) override;
+
         virtual bool GetAndReserveRecords(std::function<bool(StorageRecord&&)> const& consumer, unsigned leaseTimeMs,
             EventLatency minLatency = EventLatency_Unspecified, unsigned maxCount = 0) override;
 
@@ -42,7 +47,9 @@ namespace ARIASDK_NS_BEGIN {
 
         virtual unsigned LastReadRecordCount() override;
 
-        virtual void DeleteRecords(const std::map<std::string, std::string> & whereFilter) override;
+        virtual void DeleteAllRecords() override;
+
+        virtual void DeleteRecords(const std::map<std::string, std::string> & whereFilter = {}) override;
 
         virtual void DeleteRecords(std::vector<StorageRecordId> const& ids, HttpHeaders headers, bool& fromMemory) override;
 
@@ -53,6 +60,8 @@ namespace ARIASDK_NS_BEGIN {
         virtual bool StoreSetting(std::string const& name, std::string const& value) override;
 
         virtual std::string GetSetting(std::string const& name) override;
+
+        virtual bool DeleteSetting(std::string const& name) override;
 
         virtual size_t GetSize() override;
 
@@ -82,14 +91,15 @@ namespace ARIASDK_NS_BEGIN {
         std::mutex                  m_reserved_lock;
         std::map<StorageRecordId, StorageRecord> m_reserved_records;
 
-        std::atomic<size_t>         m_size;
+        size_t                      m_size;
 
         MATSDK_LOG_DECL_COMPONENT_CLASS();
 
     private:
-        std::atomic<size_t>         m_lastReadCount;
+        size_t                      m_lastReadCount;
 
     };
 
-} ARIASDK_NS_END
+} MAT_NS_END
 #endif
+

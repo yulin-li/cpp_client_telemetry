@@ -1,13 +1,16 @@
-// Copyright (c) Microsoft Corporation. All rights reserved.
+//
+// Copyright (c) 2015-2020 Microsoft Corporation and Contributors.
+// SPDX-License-Identifier: Apache-2.0
+//
 #define LOG_MODULE DBG_PAL
 #include "pal/PAL.hpp"
 #include "pal/NetworkInformationImpl.hpp"
 
 namespace PAL_NS_BEGIN {
 
-    NetworkInformationImpl::NetworkInformationImpl(bool isNetDetectEnabled) :
+    NetworkInformationImpl::NetworkInformationImpl(IRuntimeConfig& configuration) :
         m_info_helper(),
-        m_isNetDetectEnabled(isNetDetectEnabled) {};
+        m_isNetDetectEnabled(configuration[CFG_BOOL_ENABLE_NET_DETECT]) {};
 
     NetworkInformationImpl::~NetworkInformationImpl() {};
 
@@ -20,7 +23,7 @@ namespace PAL_NS_BEGIN {
         ///
         /// </summary>
         /// <param name="isNetDetectEnabled"></param>
-        NetworkInformation(bool isNetDetectEnabled);
+        NetworkInformation(IRuntimeConfig& configuration);
 
         /// <summary>
         ///
@@ -61,8 +64,8 @@ namespace PAL_NS_BEGIN {
         }
     };
 
-    NetworkInformation::NetworkInformation(bool isNetDetectEnabled) :
-        NetworkInformationImpl(isNetDetectEnabled)
+    NetworkInformation::NetworkInformation(IRuntimeConfig& configuration) :
+        NetworkInformationImpl(configuration)
     {
         m_type = NetworkType_Wired;
         m_cost = NetworkCost_Unmetered;
@@ -72,9 +75,10 @@ namespace PAL_NS_BEGIN {
     {
     }
 
-    std::shared_ptr<INetworkInformation> NetworkInformationImpl::Create(bool isNetDetectEnabled)
+    std::shared_ptr<INetworkInformation> NetworkInformationImpl::Create(IRuntimeConfig& configuration)
     {
-        return std::make_shared<NetworkInformation>(isNetDetectEnabled);
+        return std::make_shared<NetworkInformation>(configuration);
     }
 
 } PAL_NS_END
+

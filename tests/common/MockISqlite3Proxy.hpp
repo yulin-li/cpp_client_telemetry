@@ -1,4 +1,7 @@
-// Copyright (c) Microsoft. All rights reserved.
+//
+// Copyright (c) 2015-2020 Microsoft Corporation and Contributors.
+// SPDX-License-Identifier: Apache-2.0
+//
 
 #pragma once
 
@@ -9,6 +12,10 @@
 
 namespace testing {
 
+#if defined(__clang__)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Winconsistent-missing-override"  // GMock MOCK_METHOD* macros don't use override.
+#endif
 
 class MockISqlite3Proxy : public MAT::ISqlite3Proxy {
   public:
@@ -50,5 +57,9 @@ class MockISqlite3Proxy : public MAT::ISqlite3Proxy {
     MOCK_METHOD1(sqlite3_vfs_find, sqlite3_vfs * (char const* zVfsName));
 };
 
+#if defined(__clang__)
+#pragma clang diagnostic pop
+#endif
 
 }  // namespace testing
+

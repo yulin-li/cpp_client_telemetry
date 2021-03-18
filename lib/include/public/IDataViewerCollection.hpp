@@ -1,13 +1,16 @@
-// Copyright (c) Microsoft. All rights reserved.
+//
+// Copyright (c) 2015-2020 Microsoft Corporation and Contributors.
+// SPDX-License-Identifier: Apache-2.0
+//
 #ifndef IDATAVIEWERCOLLECTION_HPP
 #define IDATAVIEWERCOLLECTION_HPP
 
 #include "IDataViewer.hpp"
-#include "Version.hpp"
+#include "ctmacros.hpp"
 
 #include <memory>
 
-namespace ARIASDK_NS_BEGIN
+namespace MAT_NS_BEGIN
 {
     /// <summary>
     /// This interface allows SDK users to register a data viewer
@@ -42,7 +45,7 @@ namespace ARIASDK_NS_BEGIN
         virtual void UnregisterAllViewers() = 0;
 
         /// <summary>
-        /// Check if the given viewer (name) is registered as a data viewer.
+        /// Check if the given viewer (name) is registered as a data viewer and is actively transmitting.
         /// </summary>
         /// <param name="viewerName">
         /// Unique Name to identify the viewer being checked.
@@ -50,11 +53,20 @@ namespace ARIASDK_NS_BEGIN
         virtual bool IsViewerEnabled(const char* viewerName) const = 0;
 
         /// <summary>
-        /// Check if any viewers are registered.
+        /// Check if any viewers are registered and actively transmitting.
         /// </summary>
         virtual bool IsViewerEnabled() const noexcept = 0;
+
+        /// <summary>
+        /// Check if the given viewer (name) is registered as a data viewer.
+        /// </summary>
+        /// <param name="viewerName">
+        /// Unique Name to identify the viewer being checked.
+        /// </param>
+        virtual bool IsViewerRegistered(const char* viewerName) const = 0;
     };
 
-} ARIASDK_NS_END
+} MAT_NS_END
 
 #endif
+

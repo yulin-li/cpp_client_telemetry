@@ -1,18 +1,21 @@
-// Copyright (c) Microsoft. All rights reserved.
+//
+// Copyright (c) 2015-2020 Microsoft Corporation and Contributors.
+// SPDX-License-Identifier: Apache-2.0
+//
 #include "mat/config.h"
 
 // Assume that if we are compiling with MSVC, then we prefer to use Windows HTTP stack,
 // e.g. WinInet.dll or Win 10 HTTP client instead
 #if defined(MATSDK_PAL_CPP11) && !defined(_MSC_VER) && defined(HAVE_MAT_DEFAULT_HTTP_CLIENT)
 
-#include "Version.hpp"
+#include "ctmacros.hpp"
 
 #include <memory>
 
 #include "utils/Utils.hpp"
 #include "HttpClient_Curl.hpp"
 
-namespace ARIASDK_NS_BEGIN {
+namespace MAT_NS_BEGIN {
 
     static std::string NextReqId() {
         static std::atomic<uint64_t> seq(0);
@@ -74,7 +77,7 @@ namespace ARIASDK_NS_BEGIN {
         auto curlOperation = std::make_shared<CurlHttpOperation>(curlRequest->m_method, curlRequest->m_url, callback, requestHeaders, curlRequest->m_body);
         curlRequest->SetOperation(curlOperation);
         
-        // The liftime of curlOperation is guarnteed by the call to result.wait() in the d'tor.  
+        // The lifetime of curlOperation is guarnteed by the call to result.wait() in the d'tor.  
         curlOperation->SendAsync([this, callback, requestId](CurlHttpOperation& operation) {
             this->EraseRequest(requestId);
 
@@ -134,6 +137,7 @@ namespace ARIASDK_NS_BEGIN {
         m_requests[request->GetId()] = request;
     }
 
-} ARIASDK_NS_END
+} MAT_NS_END
 
 #endif
+

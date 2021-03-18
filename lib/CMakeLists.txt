@@ -1,4 +1,4 @@
-include_directories( . ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/include/public ${CMAKE_CURRENT_SOURCE_DIR}/include/public ${CMAKE_CURRENT_SOURCE_DIR}/include/mat ${CMAKE_CURRENT_SOURCE_DIR}/pal ${CMAKE_CURRENT_SOURCE_DIR}/utils ${CMAKE_CURRENT_SOURCE_DIR}/modules/exp ${CMAKE_CURRENT_SOURCE_DIR}/modules/dataviewer /usr/local/include )
+include_directories( . ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/include/public ${CMAKE_CURRENT_SOURCE_DIR}/include/public ${CMAKE_CURRENT_SOURCE_DIR}/include/mat ${CMAKE_CURRENT_SOURCE_DIR}/pal ${CMAKE_CURRENT_SOURCE_DIR}/utils ${CMAKE_CURRENT_SOURCE_DIR}/modules/exp ${CMAKE_CURRENT_SOURCE_DIR}/modules/dataviewer ${CMAKE_CURRENT_SOURCE_DIR}/modules/privacyguard ${CMAKE_CURRENT_SOURCE_DIR}/../third_party/Reachability ${CMAKE_CURRENT_SOURCE_DIR}/modules/cds /usr/local/include )
 
 set(SRCS decorators/BaseDecorator.cpp
   packager/BondSplicer.cpp
@@ -30,6 +30,7 @@ set(SRCS decorators/BaseDecorator.cpp
   utils/FileUtils.cpp
   utils/Utils.cpp
   utils/StringUtils.cpp
+  utils/ZlibUtils.cpp
   pal/InformationProviderImpl.cpp
   http/HttpClient_CAPI.cpp
   http/HttpClientManager.cpp
@@ -39,14 +40,21 @@ set(SRCS decorators/BaseDecorator.cpp
   stats/Statistics.cpp
   stats/MetaStats.cpp
   offline/StorageObserver.cpp
+  offline/OfflineStorageFactory.cpp
   offline/MemoryStorage.cpp
   offline/OfflineStorage_SQLite.cpp
   offline/OfflineStorageHandler.cpp
+  offline/LogSessionDataProvider.cpp
   backoff/IBackoff.cpp
   pal/PAL.cpp
   pal/TaskDispatcher_CAPI.cpp
   pal/WorkerThread.cpp
 )
+
+# Support for Azure Monitor / Application Insights
+if(BUILD_AZMON)
+  include(modules/azmon/CMakeLists.txt OPTIONAL)
+endif()
 
 if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/modules/exp/)
   list(APPEND SRCS
@@ -62,21 +70,42 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/modules/exp/)
   )
 endif()
 
-if(EXISTS "modules/dataviewer/")
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/modules/dataviewer/)
   list(APPEND SRCS
     modules/dataviewer/DefaultDataViewer.cpp
     modules/dataviewer/OnDisableNotificationCollection.cpp
   )
 endif()
 
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/modules/privacyguard/ AND BUILD_PRIVACYGUARD)
+  add_definitions(-DHAVE_MAT_PRIVACYGUARD)
+  list(APPEND SRCS
+    modules/privacyguard/PrivacyGuard.cpp
+    modules/privacyguard/RegisteredFileTypes.cpp
+    modules/privacyguard/SummaryStatistics.cpp
+  )
+endif()
+
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/modules/cds/ AND BUILD_CDS)
+  add_definitions(-DHAVE_MAT_CDS)
+  list(APPEND SRCS
+    modules/cds/CdsFactory.hpp
+    modules/cds/CdsFactory.cpp
+  )
+endif()
+
 if(PAL_IMPLEMENTATION STREQUAL "CPP11")
   if(APPLE)
     list(APPEND SRCS
-      pal/posix/sysinfo_utils_apple.mm
+      pal/posix/sysinfo_utils_apple.cpp
     )
     if(BUILD_IOS)
       list(APPEND SRCS
         pal/posix/sysinfo_utils_ios.mm
+      )
+    else()
+      list(APPEND SRCS
+        pal/posix/sysinfo_utils_mac.mm
       )
     endif()
   endif()
@@ -98,16 +127,11 @@ if(PAL_IMPLEMENTATION STREQUAL "CPP11")
       )
     endif()
 
-    if(BUILD_IOS)
-      list(APPEND SRCS
+    list(APPEND SRCS
         pal/posix/NetworkInformationImpl.mm
-        pal/posix/Reachability.m
-      )
-    else()
-      list(APPEND SRCS
-        pal/posix/NetworkInformationImpl.cpp
-      )
-    endif()
+        # TODO: this unit below needs to be deprecated and removed
+        ../third_party/Reachability/ODWReachability.m
+    )
   else()
     list(APPEND SRCS
       http/HttpClient_Curl.cpp
@@ -122,13 +146,25 @@ if(PAL_IMPLEMENTATION STREQUAL "CPP11")
 	  ../wrappers/obj-c/ODWLogManager.mm
 	  ../wrappers/obj-c/ODWEventProperties.mm
 	  ../wrappers/obj-c/ODWLogConfiguration.mm
+	  ../wrappers/obj-c/ODWSemanticContext.mm
 	  )
+	if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/modules/dataviewer/)
+  		list(APPEND SRCS
+		  ../wrappers/obj-c/ODWDiagnosticDataViewer.mm
+  		)
+	endif()
+    if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/modules/privacyguard/ AND BUILD_PRIVACYGUARD)
+          list(APPEND SRCS
+          ../wrappers/obj-c/ODWCommonDataContext.mm
+          ../wrappers/obj-c/ODWPrivacyGuard.mm
+          )
+    endif()
   endif()
 elseif(PAL_IMPLEMENTATION STREQUAL "WIN32")
 # Win32 Desktop for now.
 # TODO: define a separate PAL for Win10 cmake build
 include_directories( ${CMAKE_CURRENT_SOURCE_DIR}/../zlib ${CMAKE_CURRENT_SOURCE_DIR}/../sqlite)
-add_definitions(-D_UNICODE -DUNICODE -DZLIB_WINAPI -DWIN32 -DARIASDK_PLATFORM_WINDOWS=1 -DARIASDK_SHARED_LIB=1 -D_ARIA_UTC_SDK -D_CRT_SECURE_NO_WARNINGS -DUSE_BOND -D_WINDOWS -D_USRDLL -DWINVER=_WIN32_WINNT_WIN7)
+add_definitions(-D_UNICODE -DUNICODE -DZLIB_WINAPI -DWIN32 -DMATSDK_PLATFORM_WINDOWS=1 -DMATSDK_SHARED_LIB=1 -D_UTC_SDK -D_CRT_SECURE_NO_WARNINGS -DUSE_BOND -D_WINDOWS -D_USRDLL -DWINVER=_WIN32_WINNT_WIN7)
 remove_definitions(-D_MBCS)
   list(APPEND SRCS
     http/HttpClient_WinInet.cpp
@@ -138,8 +174,9 @@ remove_definitions(-D_MBCS)
     pal/desktop/WindowsDesktopSystemInformationImpl.cpp
     pal/desktop/WindowsEnvironmentInfo.hpp
     pal/desktop/NetworkDetector.cpp
+    utils/StringConversion.cpp
   )
-  
+
   # UTC module
   if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/modules/utc)
     list(APPEND SRCS
@@ -173,11 +210,37 @@ endif()
 
 if(BUILD_SHARED_LIBS STREQUAL "ON")
   message("-- Building shared SDK library")
+  
+  # include(FindCURL)
+  # find_package(CURL REQUIRED)
+  # set(CMAKE_REQUIRED_LIBRARIES "${CURL_LIBRARIES}")
+
+  # find_package(sqlite3 REQUIRED)
+
   add_library(mat SHARED ${SRCS})
-  add_library(sqlite3 SHARED IMPORTED GLOBAL)
-  add_library(z SHARED IMPORTED GLOBAL)
-  #target_link_libraries(mat PUBLIC libsqlite3.so libz.so ${LIBS} "${CMAKE_THREAD_LIBS_INIT}" "${CMAKE_DL_LIBS}" "${Tcmalloc_LIBRARIES}")
-  target_link_libraries(mat PUBLIC libsqlite3.so libz.so ${LIBS} "${CMAKE_THREAD_LIBS_INIT}" "${CMAKE_DL_LIBS}")
+
+  # Add flags for obtaining system UUID via IOKit
+  if (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+    set(CMAKE_SHARED_LINKER_FLAGS
+      "-framework CoreFoundation -framework IOKit -framework Foundation"
+    )
+  endif()
+
+  #
+  # TODO: allow adding "${Tcmalloc_LIBRARIES}" to target_link_libraries for memory leak debugging
+  #
+  if (BUILD_STATIC_SQLITE STREQUAL "ON")
+    # Build dynamic library, but prefer statically linking sqlite3 and zlib
+    add_library(sqlite3 STATIC IMPORTED GLOBAL)
+    add_library(z STATIC IMPORTED GLOBAL)
+    target_link_libraries(mat PRIVATE sqlite3 PUBLIC z ${LIBS} "${CMAKE_THREAD_LIBS_INIT}" "${CMAKE_DL_LIBS}" "${CMAKE_REQUIRED_LIBRARIES}")
+  else()
+    # Prefer shared libraries for sqlite3 and zlib
+    add_library(sqlite3 SHARED IMPORTED GLOBAL)
+    add_library(z SHARED IMPORTED GLOBAL)
+    target_link_libraries(mat PUBLIC sqlite3 PUBLIC z ${LIBS} "${CMAKE_THREAD_LIBS_INIT}" "${CMAKE_DL_LIBS}" "${CMAKE_REQUIRED_LIBRARIES}")
+  endif()
+
   # target_link_libraries(mat PUBLIC libsqlite3 libcurl.a libz.a libssl.a libcrypto.a "${SQLITE_LIBRARY}" "${CMAKE_THREAD_LIBS_INIT}" "${CMAKE_DL_LIBS}" )
   install(TARGETS mat EXPORT mat LIBRARY DESTINATION ${INSTALL_LIB_DIR})
 else()
@@ -188,7 +251,9 @@ else()
   else()
     add_library(sqlite3 STATIC IMPORTED GLOBAL)
     add_library(z STATIC IMPORTED GLOBAL)
-    #target_link_libraries(mat PRIVATE libsqlite3.a PUBLIC libz.a ${LIBS} "${CMAKE_THREAD_LIBS_INIT}" "${CMAKE_DL_LIBS}" "${Tcmalloc_LIBRARIES}")
+    #
+    # TODO: allow adding "${Tcmalloc_LIBRARIES}" to target_link_libraries for memory leak debugging
+    #
     target_link_libraries(mat PRIVATE libsqlite3.a PUBLIC libz.a ${LIBS} "${CMAKE_THREAD_LIBS_INIT}" "${CMAKE_DL_LIBS}" )
   endif()
   install(TARGETS mat EXPORT mat ARCHIVE DESTINATION ${INSTALL_LIB_DIR})

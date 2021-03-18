@@ -1,9 +1,12 @@
-// Copyright (c) Microsoft. All rights reserved.
+//
+// Copyright (c) 2015-2020 Microsoft Corporation and Contributors.
+// SPDX-License-Identifier: Apache-2.0
+//
 #ifndef MAT_LOGMANAGER_HPP
 #define MAT_LOGMANAGER_HPP
 
-#include "ctmacros.hpp"
 #include "CommonFields.h"
+#include "ctmacros.hpp"
 
 #if (HAVE_EXCEPTIONS)
 #include <exception>
@@ -11,7 +14,7 @@
 
 #ifdef _MSC_VER
 #pragma warning(push)
-#pragma warning(disable:4459 4100 4121 4068)
+#pragma warning(disable : 4459 4121 4068)
 #endif
 
 #pragma clang diagnostic push
@@ -19,8 +22,10 @@
 
 #ifdef _MANAGED
 #include <msclr/lock.h>
-public ref class LogManagerLock {
-public:
+public
+ref class LogManagerLock
+{
+   public:
     static Object ^ lock = gcnew Object();
 };
 #else
@@ -29,122 +34,118 @@ public:
 
 #include "LogManagerProvider.hpp"
 
-#define LM_SAFE_CALL(method , ... )                 \
-    {                                               \
-        LM_LOCKGUARD(stateLock());                  \
-        if (nullptr != instance)                    \
-        {                                           \
-            instance-> method ( __VA_ARGS__);       \
-            return STATUS_SUCCESS;                  \
-        }                                           \
-        return STATUS_EFAIL;                        \
+#define LM_SAFE_CALL(method, ...)          \
+    {                                      \
+        LM_LOCKGUARD(stateLock());         \
+        if (nullptr != instance)           \
+        {                                  \
+            instance->method(__VA_ARGS__); \
+            return STATUS_SUCCESS;         \
+        }                                  \
+        return STATUS_EFAIL;               \
     }
 
-#define LM_SAFE_CALL_RETURN(method , ... )          \
-    {                                               \
-        LM_LOCKGUARD(stateLock());                  \
-        if (nullptr != instance)                    \
-        {                                           \
-            return instance-> method ( __VA_ARGS__);\
-        }                                           \
+#define LM_SAFE_CALL_RETURN(method, ...)          \
+    {                                             \
+        LM_LOCKGUARD(stateLock());                \
+        if (nullptr != instance)                  \
+        {                                         \
+            return instance->method(__VA_ARGS__); \
+        }                                         \
     }
 
-#define LM_SAFE_CALL_STR(method , ... )             \
-    {                                               \
-        LM_LOCKGUARD(stateLock());                  \
-        if (nullptr != instance)                    \
-        {                                           \
-            return instance-> method ( __VA_ARGS__);\
-        }                                           \
-        return "";                                  \
+#define LM_SAFE_CALL_STR(method, ...)             \
+    {                                             \
+        LM_LOCKGUARD(stateLock());                \
+        if (nullptr != instance)                  \
+        {                                         \
+            return instance->method(__VA_ARGS__); \
+        }                                         \
+        return "";                                \
     }
 
-#define LM_SAFE_CALL_PTR(method , ... )             \
-    {                                               \
-        LM_LOCKGUARD(stateLock());                  \
-        if (nullptr != instance)                    \
-        {                                           \
-            return instance-> method ( __VA_ARGS__);\
-        }                                           \
-        return nullptr;                             \
+#define LM_SAFE_CALL_PTR(method, ...)             \
+    {                                             \
+        LM_LOCKGUARD(stateLock());                \
+        if (nullptr != instance)                  \
+        {                                         \
+            return instance->method(__VA_ARGS__); \
+        }                                         \
+        return nullptr;                           \
     }
 
-#define LM_SAFE_CALL_PTRREF(method , ... )          \
-    {                                               \
-        LM_LOCKGUARD(stateLock());                  \
-        if (nullptr != instance)                    \
-        {                                           \
-            return &(instance-> method ( __VA_ARGS__));\
-        }                                           \
-        return nullptr;                             \
+#define LM_SAFE_CALL_PTRREF(method, ...)             \
+    {                                                \
+        LM_LOCKGUARD(stateLock());                   \
+        if (nullptr != instance)                     \
+        {                                            \
+            return &(instance->method(__VA_ARGS__)); \
+        }                                            \
+        return nullptr;                              \
     }
 
-#define LM_SAFE_CALL_VOID(method , ... )            \
-    {                                               \
-        LM_LOCKGUARD(stateLock());                  \
-        if (nullptr != instance)                    \
-        {                                           \
-            instance-> method ( __VA_ARGS__);       \
-            return;                                 \
-        }                                           \
+#define LM_SAFE_CALL_VOID(method, ...)     \
+    {                                      \
+        LM_LOCKGUARD(stateLock());         \
+        if (nullptr != instance)           \
+        {                                  \
+            instance->method(__VA_ARGS__); \
+            return;                        \
+        }                                  \
     }
 
 #ifdef _MANAGED
 #define LM_LOCKGUARD(macro_mutex) msclr::lock TOKENPASTE2(__guard_, __LINE__)(LogManagerLock::lock);
 #else
-#define LM_LOCKGUARD(macro_mutex)                   \
-    std::lock_guard<std::recursive_mutex> TOKENPASTE2(__guard_, __LINE__) (macro_mutex);
+#define LM_LOCKGUARD(macro_mutex) \
+    std::lock_guard<std::recursive_mutex> TOKENPASTE2(__guard_, __LINE__)(macro_mutex);
 #endif
 
-namespace ARIASDK_NS_BEGIN
+namespace MAT_NS_BEGIN
 {
 #if (HAVE_EXCEPTIONS)
     class LogManagerNotInitializedException : public std::runtime_error
     {
-    public:
+       public:
         LogManagerNotInitializedException(const char* message) noexcept
-            : std::runtime_error(message) { }
+            :
+            std::runtime_error(message)
+        {
+        }
     };
 #endif
 
     /// <summary>
-    /// This configuration flag is populated by SDK to indicate if this singleton instance
-    /// is running in "host" mode and all LogController methods should be accessible to the
-    /// caller.
-    /// </summary>
-    static constexpr const char * HOST_MODE = "hostMode";
-
-    /// <summary>
     /// This class is used to manage the Events  logging system
     /// </summary>
-    template <class ModuleConfiguration> class LogManagerBase
+    template <class ModuleConfiguration>
+    class LogManagerBase
     {
         static_assert(std::is_base_of<ILogConfiguration, ModuleConfiguration>::value, "ModuleConfiguration must derive from LogConfiguration");
 
-    public:
+       public:
         using basetype = LogManagerBase<ModuleConfiguration>;
 
-    protected:
-
+       protected:
         /// <summary>
         /// LogManagerBase constructor
         /// </summary>
-        LogManagerBase() {};
+        LogManagerBase(){};
 
         /// <summary>
         /// LogManager copy constructor
         /// </summary>
-        LogManagerBase(const LogManagerBase&) {};
+        LogManagerBase(const LogManagerBase&){};
 
         /// <summary>
         /// [not implemented] LogManager assignment operator
         /// </summary>
-        LogManagerBase& operator=(const LogManagerBase&) {};
+        LogManagerBase& operator=(const LogManagerBase&){};
 
         /// <summary>
         /// LogManager destructor
         /// </summary>
-        virtual ~LogManagerBase() {};
+        virtual ~LogManagerBase(){};
 
 #ifndef _MANAGED
         /// <summary>
@@ -161,13 +162,13 @@ namespace ARIASDK_NS_BEGIN
 
         static inline bool isHost()
         {
-            return GetLogConfiguration()[HOST_MODE];
+            return GetLogConfiguration()[CFG_BOOL_HOST_MODE];
         }
 
         /// <summary>
         /// Concrete instance for servicing all singleton calls
         /// </summary>
-        static ILogManager*         instance;
+        static ILogManager* instance;
 
         /// <summary>
         /// Debug event source associated with this singleton
@@ -181,11 +182,10 @@ namespace ARIASDK_NS_BEGIN
         static const char* GetPrimaryToken()
         {
             ILogConfiguration& config = GetLogConfiguration();
-            return (const char *)(config[CFG_STR_PRIMARY_TOKEN]);
+            return (const char*)(config[CFG_STR_PRIMARY_TOKEN]);
         }
 
-    public:
-
+       public:
         /// <summary>
         /// Returns this module LogConfiguration
         /// </summary>
@@ -196,12 +196,12 @@ namespace ARIASDK_NS_BEGIN
         }
 
         /// <summary>
-        /// Initializes the telemetry logging system with default configuraiton and HTTPClient.
+        /// Initializes the telemetry logging system with default configuration and HTTPClient.
         /// </summary>
         /// <returns>A logger instance instantiated with the default tenantToken.</returns>
         static ILogger* Initialize()
         {
-           return Initialize(std::string {});
+            return Initialize(std::string{});
         }
 
         /// <summary>
@@ -211,7 +211,7 @@ namespace ARIASDK_NS_BEGIN
         /// <returns>A logger instance instantiated with the tenantToken.</returns>
         inline static ILogger* Initialize(const std::string& tenantToken)
         {
-           return Initialize(tenantToken, GetLogConfiguration());
+            return Initialize(tenantToken, GetLogConfiguration());
         }
 
         /// <summary>
@@ -222,8 +222,7 @@ namespace ARIASDK_NS_BEGIN
         /// <returns>A logger instance instantiated with the tenantToken.</returns>
         static ILogger* Initialize(
             const std::string& tenantToken,
-            ILogConfiguration& configuration
-        )
+            ILogConfiguration& configuration)
         {
             LM_LOCKGUARD(stateLock());
             ILogConfiguration& currentConfig = GetLogConfiguration();
@@ -232,12 +231,12 @@ namespace ARIASDK_NS_BEGIN
                 // Copy alternate configuration into currentConfig
                 if (&configuration != &currentConfig)
                 {
-                    for (const auto &kv : *configuration)
+                    for (const auto& kv : *configuration)
                     {
                         currentConfig[kv.first.c_str()] = kv.second;
                     }
 
-                    for (const auto &kv : configuration.GetModules())
+                    for (const auto& kv : configuration.GetModules())
                     {
                         currentConfig.AddModule(kv.first.c_str(), kv.second);
                     }
@@ -254,7 +253,8 @@ namespace ARIASDK_NS_BEGIN
                 instance->AttachEventSource(GetDebugEventSource());
                 return instance->GetLogger(currentConfig[CFG_STR_PRIMARY_TOKEN]);
             }
-            else {
+            else
+            {
                 // TODO: [MG] - decide what to do if someone's doing re-Initialize.
                 // For now Re-initialize works as GetLogger with an alternate token.
                 // We may decide to assert(tenantToken==primaryToken) ...
@@ -272,7 +272,7 @@ namespace ARIASDK_NS_BEGIN
         static status_t FlushAndTeardown()
         {
             LM_LOCKGUARD(stateLock());
-#ifdef NO_TEARDOWN // Avoid destroying our ILogManager instance on teardown
+#ifdef NO_TEARDOWN  // Avoid destroying our ILogManager instance on teardown
             LM_SAFE_CALL(Flush);
             LM_SAFE_CALL(UploadNow);
             return STATUS_SUCCESS;
@@ -312,12 +312,12 @@ namespace ARIASDK_NS_BEGIN
             LM_LOCKGUARD(stateLock());
             if (isHost())
                 LM_SAFE_CALL(GetLogController()->UploadNow);
-            return STATUS_EPERM; // Permission denied
+            return STATUS_EPERM;  // Permission denied
         }
 
         /// <summary>
         /// Flush any pending telemetry events in memory to disk to reduce possible data loss as seen necessary.
-        /// This function can be very expensive so should be used sparingly. OS will block the calling thread 
+        /// This function can be very expensive so should be used sparingly. OS will block the calling thread
         /// and might flush the global file buffers, i.e. all buffered filesystem data, to disk, which could be
         /// time consuming.
         /// </summary>
@@ -325,7 +325,7 @@ namespace ARIASDK_NS_BEGIN
         {
             if (isHost())
                 LM_SAFE_CALL(GetLogController()->Flush);
-            return STATUS_EPERM; // Permission denied
+            return STATUS_EPERM;  // Permission denied
         }
 
         /// <summary>
@@ -336,7 +336,7 @@ namespace ARIASDK_NS_BEGIN
         {
             if (isHost())
                 LM_SAFE_CALL(GetLogController()->PauseTransmission);
-            return STATUS_EPERM; // Permission denied
+            return STATUS_EPERM;  // Permission denied
         }
 
         /// <summary>
@@ -346,13 +346,13 @@ namespace ARIASDK_NS_BEGIN
         {
             if (isHost())
                 LM_SAFE_CALL(GetLogController()->ResumeTransmission);
-            return STATUS_EPERM; // Permission denied
+            return STATUS_EPERM;  // Permission denied
         }
 
         /// <summary>
         /// Sets transmit profile for event transmission to one of the built-in profiles.
         /// A transmit profile is a collection of hardware and system settings (like network connectivity, power state)
-        /// based on which to determine how events are to be transmitted. 
+        /// based on which to determine how events are to be transmitted.
         /// </summary>
         /// <param name="profile">Transmit profile</param>
         /// <returns>This function doesn't return any value because it always succeeds.</returns>
@@ -360,13 +360,13 @@ namespace ARIASDK_NS_BEGIN
         {
             if (isHost())
                 LM_SAFE_CALL(GetLogController()->SetTransmitProfile, profile);
-            return STATUS_EPERM; // Permission denied
+            return STATUS_EPERM;  // Permission denied
         }
 
         /// <summary>
         /// Sets transmit profile for event transmission.
         /// A transmit profile is a collection of hardware and system settings (like network connectivity, power state)
-        /// based on which to determine how events are to be transmitted. 
+        /// based on which to determine how events are to be transmitted.
         /// </summary>
         /// <param name="profile">Transmit profile</param>
         /// <returns>true if profile is successfully applied, false otherwise</returns>
@@ -374,7 +374,7 @@ namespace ARIASDK_NS_BEGIN
         {
             if (isHost())
                 LM_SAFE_CALL(GetLogController()->SetTransmitProfile, profile);
-            return STATUS_EPERM; // Permission denied
+            return STATUS_EPERM;  // Permission denied
         }
 
         /// <summary>
@@ -386,7 +386,7 @@ namespace ARIASDK_NS_BEGIN
         {
             if (isHost())
                 LM_SAFE_CALL(GetLogController()->LoadTransmitProfiles, profiles_json);
-            return STATUS_EPERM; // Permission denied
+            return STATUS_EPERM;  // Permission denied
         }
 
         /// <summary>
@@ -396,8 +396,18 @@ namespace ARIASDK_NS_BEGIN
         {
             if (isHost())
                 LM_SAFE_CALL(GetLogController()->ResetTransmitProfiles);
-            return STATUS_EPERM; // Permission denied
+            return STATUS_EPERM;  // Permission denied
         }
+
+        // <summary>
+        // Delete local strorage data
+        static status_t DeleteData()
+        {
+            if (isHost())
+                LM_SAFE_CALL(GetLogController()->DeleteData);
+            return STATUS_EPERM;  // Permission denied
+        }
+
 
 #endif
 
@@ -407,9 +417,9 @@ namespace ARIASDK_NS_BEGIN
             LM_SAFE_CALL_STR(GetTransmitProfileName);
 
         /// <summary>
-        /// Retrieve an ISemanticContext interface through which to specify context information 
+        /// Retrieve an ISemanticContext interface through which to specify context information
         /// such as device, system, hardware and user information.
-        /// Context information set via this API will apply to all logger instance unless they 
+        /// Context information set via this API will apply to all logger instance unless they
         /// are overwritten by individual logger instance.
         /// </summary>
         /// <returns>ISemanticContext interface pointer</returns>
@@ -418,7 +428,7 @@ namespace ARIASDK_NS_BEGIN
 
         /// <summary>
         /// Adds or overrides a property of the custom context for the telemetry logging system.
-        /// Context information set here applies to events generated by all ILogger instances 
+        /// Context information set here applies to events generated by all ILogger instances
         /// unless it is overwritten on a particular ILogger instance.
         /// </summary>
         /// <param name="name">Name of the context property</param>
@@ -429,13 +439,13 @@ namespace ARIASDK_NS_BEGIN
 
         /// <summary>
         /// Adds or overrides a property of the custom context for the telemetry logging system.
-        /// Context information set here applies to events generated by all ILogger instances 
+        /// Context information set here applies to events generated by all ILogger instances
         /// unless it is overwritten on a particular ILogger instance.
         /// </summary>
         /// <param name="name">Name of the context property</param>
         /// <param name="value">Value of the context property</param>
         /// <param name='piiKind'>PIIKind of the context with PiiKind_None as the default</param>
-        static status_t SetContext(const std::string& name, const char *value, PiiKind piiKind = PiiKind_None)
+        static status_t SetContext(const std::string& name, const char* value, PiiKind piiKind = PiiKind_None)
             LM_SAFE_CALL(SetContext, name, std::string(value), piiKind);
 
         /// <summary>
@@ -460,7 +470,7 @@ namespace ARIASDK_NS_BEGIN
         /// </summary>
         /// <param name="name">Name of the property</param>
         /// <param name="value">8-bit Integer value of the property</param>
-        static status_t SetContext(const std::string& name, int8_t  value, PiiKind piiKind = PiiKind_None)
+        static status_t SetContext(const std::string& name, int8_t value, PiiKind piiKind = PiiKind_None)
             LM_SAFE_CALL(SetContext, name, (int64_t)value, piiKind);
 
         /// <summary>
@@ -487,7 +497,7 @@ namespace ARIASDK_NS_BEGIN
         /// </summary>
         /// <param name="name">Name of the property</param>
         /// <param name="value">8-bit unsigned integer value of the property</param>
-        static status_t SetContext(const std::string& name, uint8_t  value, PiiKind piiKind = PiiKind_None)
+        static status_t SetContext(const std::string& name, uint8_t value, PiiKind piiKind = PiiKind_None)
             LM_SAFE_CALL(SetContext, name, (int64_t)value, piiKind);
 
         /// <summary>
@@ -593,7 +603,7 @@ namespace ARIASDK_NS_BEGIN
         /// <summary>
         /// Add Debug callback
         /// </summary>
-        static void AddEventListener(DebugEventType type, DebugEventListener &listener)
+        static void AddEventListener(DebugEventType type, DebugEventListener& listener)
         {
             GetDebugEventSource().AddEventListener(type, listener);
         }
@@ -601,7 +611,7 @@ namespace ARIASDK_NS_BEGIN
         /// <summary>
         /// Remove Debug callback
         /// </summary>
-        static void RemoveEventListener(DebugEventType type, DebugEventListener &listener)
+        static void RemoveEventListener(DebugEventType type, DebugEventListener& listener)
         {
             GetDebugEventSource().RemoveEventListener(type, listener);
         }
@@ -679,6 +689,16 @@ namespace ARIASDK_NS_BEGIN
             return nullLogManager.GetDataViewerCollection();
 #endif
         }
+
+        /// <summary>
+        /// Obtain a raw pointer to the ILogManager singleton instance.
+        /// NOTE: this API should not be used concurrently with Initialize or FlushAndTeardown API calls.
+        /// </summary>
+        static ILogManager* GetInstance() noexcept
+        {
+            LM_LOCKGUARD(stateLock());
+            return instance;
+        }
     };
 
     // Implements LogManager<T> singleton template static  members
@@ -688,18 +708,21 @@ namespace ARIASDK_NS_BEGIN
 // that causes improper global static templated member initialization:
 // https://developercommunity.visualstudio.com/content/problem/134886/initialization-of-template-static-variable-wrong.html
 //
-#define DEFINE_LOGMANAGER(LogManagerClass, LogConfigurationClass)                           \
-    ILogManager*            LogManagerClass::instance      = nullptr;
+#define DEFINE_LOGMANAGER(LogManagerClass, LogConfigurationClass) \
+    ILogManager* LogManagerClass::instance = nullptr;
 #elif defined(__APPLE__) && defined(MAT_USE_WEAK_LOGMANAGER)
-#define DEFINE_LOGMANAGER(LogManagerClass, LogConfigurationClass)                                       \
-    template<> __attribute__((weak)) ILogManager*            LogManagerBase<LogConfigurationClass>::instance {};
+#define DEFINE_LOGMANAGER(LogManagerClass, LogConfigurationClass) \
+    template <>                                                   \
+    __attribute__((weak)) ILogManager* LogManagerBase<LogConfigurationClass>::instance{};
 #else
 // ISO C++ -compliant declaration
-#define DEFINE_LOGMANAGER(LogManagerClass, LogConfigurationClass)                                       \
-    template<> ILogManager*            LogManagerBase<LogConfigurationClass>::instance {};
+#define DEFINE_LOGMANAGER(LogManagerClass, LogConfigurationClass) \
+    template <>                                                   \
+    ILogManager* LogManagerBase<LogConfigurationClass>::instance{};
 #endif
 
-} ARIASDK_NS_END
+}
+MAT_NS_END
 
 #pragma clang diagnostic pop
 
@@ -708,3 +731,4 @@ namespace ARIASDK_NS_BEGIN
 #endif
 
 #endif
+

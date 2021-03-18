@@ -1,3 +1,7 @@
+//
+// Copyright (c) 2015-2020 Microsoft Corporation and Contributors.
+// SPDX-License-Identifier: Apache-2.0
+//
 #include "CorrelationVector.hpp"
 #include "utils/StringUtils.hpp" // for SplitString and AreAllCharactersWhitelisted
 
@@ -9,7 +13,11 @@ using std::string;
 using std::mutex;
 using std::vector;
 
-namespace ARIASDK_NS_BEGIN
+#ifdef max
+#undef max
+#endif
+
+namespace MAT_NS_BEGIN
 {
     // Note: CV spec reserves the last character for the "!" suffix identifying sealed values.
     // This effectively means we have one less character to use.
@@ -277,7 +285,7 @@ namespace ARIASDK_NS_BEGIN
             
             try
             {
-                // do a manual string comparision before trying to parse the value to avoid throwing an exception
+                // do a manual string comparison before trying to parse the value to avoid throwing an exception
                 if (vectorString.length() == 0 ||
                     vectorString.length() > s_maxVectorElementValue.length() ||
                     (vectorString.length() == s_maxVectorElementValue.length() && vectorString > s_maxVectorElementValue))
@@ -313,4 +321,5 @@ namespace ARIASDK_NS_BEGIN
         return true;
     }
 
-} ARIASDK_NS_END
+} MAT_NS_END
+

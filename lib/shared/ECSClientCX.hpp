@@ -1,3 +1,7 @@
+//
+// Copyright (c) 2015-2020 Microsoft Corporation and Contributors.
+// SPDX-License-Identifier: Apache-2.0
+//
 #pragma once
 #include "mat/config.h"
 #ifdef HAVE_MAT_EXP
@@ -90,7 +94,7 @@ namespace MATW_NS_BEGIN {
         bool AddListener(IECSClientCallback^ listener);
 
         /// <summary>
-        /// Remove the listner to stop recieving notification from the ECSClient
+        /// Remove the listner to stop receiving notification from the ECSClient
         /// </summary>
         /// <param name="listener">listener to be removed from the ECSClient</param>
         /// <return>true if listener is removed successfully, false otherwise</return>

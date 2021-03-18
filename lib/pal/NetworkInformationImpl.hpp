@@ -1,4 +1,7 @@
-// Copyright (c) Microsoft Corporation. All rights reserved.
+//
+// Copyright (c) 2015-2020 Microsoft Corporation and Contributors.
+// SPDX-License-Identifier: Apache-2.0
+//
 #ifndef NETWORKINFORMATIONIMPL_HPP
 #define NETWORKINFORMATIONIMPL_HPP
 
@@ -18,7 +21,7 @@ namespace PAL_NS_BEGIN {
     class NetworkInformationImpl : public INetworkInformation
     {
     public:
-        static std::shared_ptr<INetworkInformation> Create(bool isNetDetectEnabled);
+        static std::shared_ptr<INetworkInformation> Create(MAT::IRuntimeConfig& configuration);
 
         // IInformationProvider API
         virtual int  RegisterInformationChangedCallback(IPropertyChangedCallback* pCallback) { m_registeredCount++; return m_info_helper.RegisterInformationChangedCallback(pCallback); }
@@ -33,7 +36,7 @@ namespace PAL_NS_BEGIN {
         virtual bool IsWifiAvailable() { return false; }
         virtual bool IsWwanAvailable() { return false; }
 
-        NetworkInformationImpl(bool isNetDetectEnabled);
+        NetworkInformationImpl(MAT::IRuntimeConfig& configuration);
         virtual ~NetworkInformationImpl();
 
         // Disable copy constructor and assignment operator.
@@ -52,3 +55,4 @@ namespace PAL_NS_BEGIN {
 
 } PAL_NS_END
 #endif
+

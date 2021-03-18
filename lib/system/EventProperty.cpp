@@ -1,6 +1,11 @@
+//
+// Copyright (c) 2015-2020 Microsoft Corporation and Contributors.
+// SPDX-License-Identifier: Apache-2.0
+//
 #include "EventProperty.hpp"
 
-#include "utils/Utils.hpp"
+#include "utils/annex_k.hpp"
+#include "utils/StringUtils.hpp"
 
 #include <string>
 #include <algorithm>
@@ -20,10 +25,7 @@ using namespace MAT;
 #define _strdup strdup
 #endif
 
-namespace ARIASDK_NS_BEGIN {
-
-    // TODO: [MG] - time_ticks_t would benefit from an extra method:
-    // time_ticks_t::time_ticks_t(const std::time_t time)
+namespace MAT_NS_BEGIN {
 
     /// <summary>
     /// Default constructor for an empty object
@@ -252,7 +254,7 @@ namespace ARIASDK_NS_BEGIN {
         case TYPE_STRING:
         {
             size_t len = strlen(source->as_string);
-            as_string = new char[len + 1];      // FIXME: [MG] - Error #14: LEAK 16 bytes 
+            as_string = new char[len + 1];
             memcpy((void*)as_string, (void*)source->as_string, len);
             as_string[len] = 0;
             break;
@@ -304,6 +306,8 @@ namespace ARIASDK_NS_BEGIN {
             break;
         }
         }
+
+        piiKind = source->piiKind;
     }
 
 
@@ -314,7 +318,6 @@ namespace ARIASDK_NS_BEGIN {
     EventProperty::EventProperty(const EventProperty& source) :
         type(source.type)
     {
-        // TODO: [MG] - memcpy is probably no longer needed here
         memcpy((void*)this, (void*)&source, sizeof(EventProperty));
         copydata(&source);
     }
@@ -326,7 +329,6 @@ namespace ARIASDK_NS_BEGIN {
     EventProperty::EventProperty(EventProperty&& source) /* noexcept */ :
         type(source.type)
     {
-        // TODO: [MG] - memcpy is probably no longer needed here
         memcpy((void*)this, (void*)&source, sizeof(EventProperty));
         copydata(&source);
     }
@@ -886,4 +888,5 @@ namespace ARIASDK_NS_BEGIN {
         return result;
     }
 
-} ARIASDK_NS_END
+} MAT_NS_END
+

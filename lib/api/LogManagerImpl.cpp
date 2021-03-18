@@ -1,49 +1,96 @@
-// Copyright (c) Microsoft. All rights reserved.
+//
+// Copyright (c) 2015-2020 Microsoft Corporation and Contributors.
+// SPDX-License-Identifier: Apache-2.0
+//
 #ifdef _MSC_VER
 // evntprov.h(838) : warning C4459 : declaration of 'Version' hides global declaration
-#pragma warning( disable : 4459 )
+#pragma warning(disable : 4459)
 #endif
-#include "mat/config.h"
 #include "LogManagerImpl.hpp"
+#include "mat/config.h"
 
+#include "offline/LogSessionDataProvider.hpp"
 #include "offline/OfflineStorageHandler.hpp"
 
 #include "system/TelemetrySystem.hpp"
 
-#include "utils/Utils.hpp"
-#include "TransmitProfiles.hpp"
 #include "EventProperty.hpp"
+#include "TransmitProfiles.hpp"
 #include "http/HttpClientFactory.hpp"
 #include "pal/TaskDispatcher.hpp"
+#include "utils/Utils.hpp"
 
 #ifdef HAVE_MAT_UTC
 #if defined __has_include
-#  if __has_include ("modules/utc/UtcTelemetrySystem.hpp")
-#    include "modules/utc/UtcTelemetrySystem.hpp"
-#  else
-   /* Compiling without UTC support because UTC private header is unavailable */
-#  undef HAVE_MAT_UTC
-#  endif
-#  else
+#if __has_include("modules/utc/UtcTelemetrySystem.hpp")
+#include "modules/utc/UtcTelemetrySystem.hpp"
+#else
+/* Compiling without UTC support because UTC private header is unavailable */
+#undef HAVE_MAT_UTC
+#endif
+#else
 #include "modules/utc/UtcTelemetrySystem.hpp"
 #endif
 #endif
 
+#ifdef HAVE_MAT_AI
+#if defined __has_include
+#if __has_include("modules/azmon/AITelemetrySystem.hpp")
+#include "modules/azmon/AITelemetrySystem.hpp"
+#else
+/* Compiling without Azure Monitor support because Azure Monitor private header is unavailable */
+#undef HAVE_MAT_AI
+#endif
+#else
+#include "modules/azmon/AITelemetrySystem.hpp"
+#endif
+#endif  // HAVE_MAT_AI
+
 #ifdef HAVE_MAT_DEFAULT_FILTER
 #if defined __has_include
-#  if __has_include ("modules/filter/CompliantByDefaultEventFilterModule.hpp")
-#    include "modules/filter/CompliantByDefaultEventFilterModule.hpp"
-#  else
-   /* Compiling without Filtering support because Filtering private header is unavailable */
-#  undef HAVE_MAT_DEFAULT_FILTER
-#  endif
-#  else
+#if __has_include("modules/filter/CompliantByDefaultEventFilterModule.hpp")
+#include "modules/filter/CompliantByDefaultEventFilterModule.hpp"
+#else
+/* Compiling without Filtering support because Filtering private header is unavailable */
+#undef HAVE_MAT_DEFAULT_FILTER
+#endif
+#else
 #include "modules/filter/LevelChececkingEventFilter.hpp"
 #endif
-#endif // HAVE_MAT_DEFAULT_FILTER
+#endif  // HAVE_MAT_DEFAULT_FILTER
 
-namespace ARIASDK_NS_BEGIN
+#ifdef HAVE_MAT_PRIVACYGUARD
+#if defined __has_include
+#if __has_include("modules/privacyguard/PrivacyGuard.hpp")
+#include "modules/privacyguard/PrivacyGuard.hpp"
+#else
+/* Compiling without Privacy Guard support because Privacy Guard private header is unavailable */
+#undef HAVE_MAT_PRIVACYGUARD
+#endif
+#else
+#include "modules/privacyguard/PrivacyGuard.hpp"
+#endif
+#endif
+
+namespace MAT_NS_BEGIN
 {
+    void DeadLoggers::AddMap(LoggerMap&& source)
+    {
+        std::lock_guard<std::mutex> lock(m_deadLoggersMutex);
+        m_deadLoggers.reserve(m_deadLoggers.size() + source.size());
+        for (auto& kv : source)
+        {
+            m_deadLoggers.emplace_back(std::move(kv.second));
+            assert(!kv.second);
+        }
+        source.clear();  // source is dead
+    }
+
+    size_t DeadLoggers::GetDeadLoggerCount() const noexcept
+    {
+        std::lock_guard<std::mutex> lock(m_deadLoggersMutex);
+        return m_deadLoggers.size();
+    }
 
     bool ILogManager::DispatchEventBroadcast(DebugEvent evt)
     {
@@ -91,19 +138,22 @@ namespace ARIASDK_NS_BEGIN
     }
 #endif
 
-    LogManagerImpl::LogManagerImpl(ILogConfiguration& configuration)
-       : LogManagerImpl(configuration, false /*deferSystemStart*/)
+    DeadLoggers LogManagerImpl::s_deadLoggers;
+
+    LogManagerImpl::LogManagerImpl(ILogConfiguration& configuration) :
+        LogManagerImpl(configuration, false /*deferSystemStart*/)
     {
     }
 
-    LogManagerImpl::LogManagerImpl(ILogConfiguration& configuration, bool deferSystemStart)
-        : m_logConfiguration(configuration),
+    LogManagerImpl::LogManagerImpl(ILogConfiguration& configuration, bool deferSystemStart) :
+        m_logConfiguration(configuration),
         m_bandwidthController(nullptr),
         m_offlineStorage(nullptr)
     {
         m_httpClient = std::static_pointer_cast<IHttpClient>(configuration.GetModule(CFG_MODULE_HTTP_CLIENT));
         m_taskDispatcher = std::static_pointer_cast<ITaskDispatcher>(configuration.GetModule(CFG_MODULE_TASK_DISPATCHER));
         m_dataViewer = std::static_pointer_cast<IDataViewer>(configuration.GetModule(CFG_MODULE_DATA_VIEWER));
+        m_customDecorator = std::static_pointer_cast<IDecoratorModule>(configuration.GetModule(CFG_MODULE_DECORATOR));
         m_config = std::unique_ptr<IRuntimeConfig>(new RuntimeConfig_Default(m_logConfiguration));
         setLogLevel(configuration);
         LOG_TRACE("New LogManager instance");
@@ -112,14 +162,18 @@ namespace ARIASDK_NS_BEGIN
         PAL::registerSemanticContext(&m_context);
 
         std::string cacheFilePath = MAT::GetAppLocalTempDirectory();
-        if ( !m_logConfiguration.HasConfig(CFG_STR_CACHE_FILE_PATH) ||
-            (const char *)(m_logConfiguration[CFG_STR_CACHE_FILE_PATH]) == nullptr)
+        if (!m_logConfiguration.HasConfig(CFG_STR_CACHE_FILE_PATH) ||
+            (const char*)(m_logConfiguration[CFG_STR_CACHE_FILE_PATH]) == nullptr)
         {
             if (m_logConfiguration.HasConfig(CFG_STR_PRIMARY_TOKEN))
             {
-                std::string tenantId = (const char *)m_logConfiguration[CFG_STR_PRIMARY_TOKEN];
+                std::string tenantId = (const char*)m_logConfiguration[CFG_STR_PRIMARY_TOKEN];
                 tenantId = MAT::tenantTokenToId(tenantId);
-
+                if ((!cacheFilePath.empty()) && (cacheFilePath.back() != PATH_SEPARATOR_CHAR))
+                {
+                    // append path separator if required
+                    cacheFilePath += PATH_SEPARATOR_CHAR;
+                }
                 cacheFilePath += tenantId;
                 cacheFilePath += ".db";
             }
@@ -131,13 +185,12 @@ namespace ARIASDK_NS_BEGIN
         }
         else
         {
-            std::string filename = (const char *)m_logConfiguration[CFG_STR_CACHE_FILE_PATH];
+            std::string filename = (const char*)m_logConfiguration[CFG_STR_CACHE_FILE_PATH];
             if (filename.find(PATH_SEPARATOR_CHAR) == std::string::npos)
             {
                 cacheFilePath += filename;
                 m_logConfiguration[CFG_STR_CACHE_FILE_PATH] = cacheFilePath;
             }
-            // TODO: [MG] - verify that cache file is writeable
         }
 
         if (m_logConfiguration.HasConfig(CFG_STR_TRANSMIT_PROFILES))
@@ -160,17 +213,11 @@ namespace ARIASDK_NS_BEGIN
             }
         }
 
-        // TODO: [MG] - LogSessionData must utilize sqlite3 DB interface instead of filesystem
-        m_logSessionData.reset(new LogSessionData(cacheFilePath));
-
         m_context.SetCommonField(SESSION_ID_LEGACY, PAL::generateUuidString());
 
         if (m_dataViewer != nullptr)
         {
             m_dataViewerCollection.RegisterViewer(m_dataViewer);
-        } else 
-        {
-            // TODO: [MG] - register default data viewer implementation if enabled?
         }
 
         if (m_taskDispatcher == nullptr)
@@ -182,6 +229,9 @@ namespace ARIASDK_NS_BEGIN
             LOG_TRACE("TaskDispatcher: External %p", m_taskDispatcher.get());
         }
 
+        int32_t sdkMode = configuration[CFG_INT_SDK_MODE];
+        (void)sdkMode; // variable may be unused when SDK is compiled without private modules
+
 #ifdef HAVE_MAT_UTC
         // UTC is not active
         configuration[CFG_STR_UTC][CFG_BOOL_UTC_ACTIVE] = false;
@@ -190,8 +240,9 @@ namespace ARIASDK_NS_BEGIN
         bool isWindowsUtcClientRegistrationEnable = PAL::IsUtcRegistrationEnabledinWindows();
         configuration[CFG_STR_UTC][CFG_BOOL_UTC_ENABLED] = isWindowsUtcClientRegistrationEnable;
 
-        int32_t sdkMode = configuration[CFG_INT_SDK_MODE];
-        if ((sdkMode > SdkModeTypes::SdkModeTypes_CS) && isWindowsUtcClientRegistrationEnable)
+        if (
+            ((sdkMode == SdkModeTypes::SdkModeTypes_UTCBackCompat) || (sdkMode == SdkModeTypes::SdkModeTypes_UTCCommonSchema)) &&
+            isWindowsUtcClientRegistrationEnable)
         {
             // UTC is active
             configuration[CFG_STR_UTC][CFG_BOOL_UTC_ACTIVE] = true;
@@ -199,8 +250,8 @@ namespace ARIASDK_NS_BEGIN
             m_system.reset(new UtcTelemetrySystem(*this, *m_config, *m_taskDispatcher));
             if (!deferSystemStart)
             {
-               m_system->start();
-               m_isSystemStarted = true;
+                m_system->start();
+                m_isSystemStarted = true;
             }
             m_alive = true;
             LOG_INFO("Started up and running in UTC mode");
@@ -213,10 +264,10 @@ namespace ARIASDK_NS_BEGIN
         {
             m_httpClient = HttpClientFactory::Create();
 #ifdef HAVE_MAT_WININET_HTTP_CLIENT
-            HttpClient_WinInet* client = static_cast<HttpClient_WinInet *>(m_httpClient.get());
+            HttpClient_WinInet* client = static_cast<HttpClient_WinInet*>(m_httpClient.get());
             if (client != nullptr)
             {
-                client->SetMsRootCheck(m_logConfiguration["http"]["msRootCheck"]);
+                client->SetMsRootCheck(m_logConfiguration[CFG_MAP_HTTP][CFG_BOOL_HTTP_MS_ROOT_CHECK]);
             }
 #endif
         }
@@ -227,12 +278,13 @@ namespace ARIASDK_NS_BEGIN
 #else
         if (m_httpClient == nullptr)
         {
-           LOG_ERROR("No valid IHTTPClient passed to LogManagerImpl's ILogConfiguration.");
-           MATSDK_THROW(std::invalid_argument("configuration"));
+            LOG_ERROR("No valid IHTTPClient passed to LogManagerImpl's ILogConfiguration.");
+            MATSDK_THROW(std::invalid_argument("configuration"));
         }
 #endif
 
-        if (m_bandwidthController == nullptr) {
+        if (m_bandwidthController == nullptr)
+        {
             m_bandwidthController = m_ownBandwidthController.get();
         }
         else
@@ -246,7 +298,25 @@ namespace ARIASDK_NS_BEGIN
 
         m_offlineStorage.reset(new OfflineStorageHandler(*this, *m_config, *m_taskDispatcher));
 
-        m_system.reset(new TelemetrySystem(*this, *m_config, *m_offlineStorage, *m_httpClient, *m_taskDispatcher, m_bandwidthController));
+#if defined(STORE_SESSION_DB) && defined(HAVE_MAT_STORAGE)
+        m_logSessionDataProvider.reset(new LogSessionDataProvider(m_offlineStorage.get()));
+#else
+        m_logSessionDataProvider.reset(new LogSessionDataProvider(cacheFilePath));
+#endif
+
+#ifdef HAVE_MAT_AI
+        if (sdkMode == SdkModeTypes::SdkModeTypes_AI)
+        {
+            m_system.reset(new AITelemetrySystem(*this, *m_config, *m_offlineStorage, *m_httpClient,
+                                                 *m_taskDispatcher, m_bandwidthController, *m_logSessionDataProvider));
+        }
+        else
+#endif
+        {
+            // Default mode is Common Schema - direct
+            m_system.reset(new TelemetrySystem(*this, *m_config, *m_offlineStorage, *m_httpClient,
+                                               *m_taskDispatcher, m_bandwidthController, *m_logSessionDataProvider));
+        }
         LOG_TRACE("Telemetry system created, starting up...");
         if (m_system && !deferSystemStart)
         {
@@ -256,16 +326,15 @@ namespace ARIASDK_NS_BEGIN
 
 #ifdef HAVE_MAT_DEFAULT_FILTER
         m_modules.push_back(std::unique_ptr<CompliantByDefaultEventFilterModule>(new CompliantByDefaultEventFilterModule()));
-#endif // HAVE_MAT_DEFAULT_FILTER
+#endif  // HAVE_MAT_DEFAULT_FILTER
 
         LOG_INFO("Initializing Modules");
         InitializeModules();
 
         LOG_INFO("Started up and running");
         m_alive = true;
-
     }
-    
+
     /// <summary>
     /// Reconfigure this ILogManager instance using current snapshot of ILogConfiguration
     /// </summary>
@@ -273,14 +342,13 @@ namespace ARIASDK_NS_BEGIN
     {
         // TODO: [maxgolov] - add other config params.
 #ifdef HAVE_MAT_WININET_HTTP_CLIENT
-        HttpClient_WinInet* client = static_cast<HttpClient_WinInet *>(m_httpClient.get());
+        HttpClient_WinInet* client = static_cast<HttpClient_WinInet*>(m_httpClient.get());
         if (client != nullptr)
         {
-            client->SetMsRootCheck(m_logConfiguration["http"]["msRootCheck"]);
+            client->SetMsRootCheck(m_logConfiguration[CFG_MAP_HTTP][CFG_BOOL_HTTP_MS_ROOT_CHECK]);
         }
 #endif
     };
-
 
     LogManagerImpl::~LogManagerImpl() noexcept
     {
@@ -289,12 +357,34 @@ namespace ARIASDK_NS_BEGIN
         ILogManagerInternal::managers.erase(this);
     }
 
+    size_t LogManagerImpl::GetDeadLoggerCount()
+    {
+        return s_deadLoggers.GetDeadLoggerCount();
+    }
+
     void LogManagerImpl::FlushAndTeardown()
     {
         LOG_INFO("Shutting down...");
         LOCKGUARD(m_lock);
         if (m_alive)
         {
+            // before we do anything else, move our Logger instances
+            // to the shut-down state and the s_deadLoggers graveyard.
+            // Calls to these loggers will be benign: before we complete
+            // their RecordShutdown() call, this LogManagerImpl is alive
+            // and well and ILogger methods should work. After that
+            // RecordShutdown(), those ILogger methods do nothing and in
+            // particular do not touch this now-defunct LogManagerImpl.
+            for (auto& kv : m_loggers)
+            {
+                // this waits until no active calls on this logger
+                kv.second->RecordShutdown();
+            }
+            s_deadLoggers.AddMap(std::move(m_loggers));
+
+            // Ensure that AddMap clears m_loggers (it does, it should continue to).
+            assert(m_loggers.empty());
+
             LOG_INFO("Tearing down modules");
             TeardownModules();
 
@@ -305,8 +395,6 @@ namespace ARIASDK_NS_BEGIN
             }
             m_system = nullptr;
 
-            m_loggers.clear();
-
             m_offlineStorage.reset();
             m_ownBandwidthController.reset();
             m_bandwidthController = nullptr;
@@ -314,6 +402,7 @@ namespace ARIASDK_NS_BEGIN
             m_httpClient = nullptr;
             m_taskDispatcher = nullptr;
             m_dataViewer = nullptr;
+            ClearDataInspectors();
 
             m_filters.UnregisterAllFilters();
 
@@ -323,7 +412,6 @@ namespace ARIASDK_NS_BEGIN
             LOG_INFO("Shutdown complete in %lld ms", shutTime);
         }
         m_alive = false;
-
     }
 
     status_t LogManagerImpl::Flush()
@@ -336,33 +424,33 @@ namespace ARIASDK_NS_BEGIN
 
     status_t LogManagerImpl::UploadNow()
     {
+        LOCKGUARD(m_lock);
         if (GetSystem())
         {
-           GetSystem()->upload();
+            GetSystem()->upload();
         }
-        // FIXME: [MG] - make sure m_system->upload returns a status
         return STATUS_SUCCESS;
     }
 
     status_t LogManagerImpl::PauseTransmission()
     {
         LOG_INFO("Pausing transmission, cancelling any outstanding uploads...");
+        LOCKGUARD(m_lock);
         if (GetSystem())
         {
-           GetSystem()->pause();
+            GetSystem()->pause();
         }
-        // FIXME: [MG] - make sure m_system->pause returns a status
         return STATUS_SUCCESS;
     }
 
     status_t LogManagerImpl::ResumeTransmission()
     {
         LOG_INFO("Resuming transmission...");
+        LOCKGUARD(m_lock);
         if (GetSystem())
         {
-           GetSystem()->resume();
+            GetSystem()->resume();
         }
-        // FIXME: [MG] - make sure m_system->resume returns a status
         return STATUS_SUCCESS;
     }
 
@@ -397,6 +485,13 @@ namespace ARIASDK_NS_BEGIN
         return (result) ? STATUS_SUCCESS : STATUS_EFAIL;
     }
 
+    status_t LogManagerImpl::LoadTransmitProfiles(const std::vector<TransmitProfileRules>& profiles) noexcept
+    {
+        LOG_INFO("LoadTransmitProfiles");
+        bool result = TransmitProfiles::load(profiles);
+        return (result) ? STATUS_SUCCESS : STATUS_EFAIL;
+    }
+
     /// <summary>
     /// Reset transmission profiles to default settings
     /// </summary>
@@ -428,6 +523,13 @@ namespace ARIASDK_NS_BEGIN
         LOG_TRACE("SetContext(\"%s\", ..., %u)", name.c_str(), piiKind);
         EventProperty prop(value, piiKind);
         m_context.SetCustomField(name, prop);
+        {
+            LOCKGUARD(m_dataInspectorGuard);
+            for(const auto& dataInspector : m_dataInspectors)
+            {
+                dataInspector->InspectSemanticContext(name, value, /*isGlobalContext: */ true, std::string{});
+            }
+        }
         return STATUS_SUCCESS;
     }
 
@@ -498,44 +600,59 @@ namespace ARIASDK_NS_BEGIN
         LOG_INFO("SetContext");
         EventProperty prop(value, piiKind);
         m_context.SetCustomField(name, prop);
+        m_context.SetCustomField(name, prop);
+        {
+            LOCKGUARD(m_dataInspectorGuard);
+            for(const auto& dataInspector : m_dataInspectors)
+            {
+                dataInspector->InspectSemanticContext(name, value, /*isGlobalContext: */ true, std::string{});
+            }
+        }
         return STATUS_SUCCESS;
     }
 
     /// <summary>
     /// Obtain current ILogConfiguration instance associated with the LogManager
     /// </summary>
-    ILogConfiguration & LogManagerImpl::GetLogConfiguration()
+    ILogConfiguration& LogManagerImpl::GetLogConfiguration()
     {
         return m_logConfiguration;
     }
 
-
-    ILogger* LogManagerImpl::GetLogger(const std::string & tenantToken, const std::string & source, const std::string & scope)
+    ILogger* LogManagerImpl::GetLogger(const std::string& tenantToken, const std::string& source, const std::string& scope)
     {
-        if (m_alive)
         {
-            LOG_TRACE("GetLogger(tenantId=\"%s\", source=\"%s\")", tenantTokenToId(tenantToken).c_str(), source.c_str());
-
-            std::string normalizedTenantToken = toLower(tenantToken);
-            std::string normalizedSource = toLower(source);
-            std::string hash = normalizedTenantToken + "/" + normalizedSource;
-
             LOCKGUARD(m_lock);
-            auto it = m_loggers.find(hash);
-            if (it == std::end(m_loggers))
+            if (!m_alive)
             {
-                m_loggers[hash] = std::unique_ptr<Logger>(new Logger(
-                    normalizedTenantToken, normalizedSource, scope,
-                    *this, m_context, *m_config));
+                return nullptr;
             }
-            uint8_t level = m_diagLevelFilter.GetDefaultLevel();
-            if (level != DIAG_LEVEL_DEFAULT) 
-            {
-                m_loggers[hash]->SetLevel(level);
-            }
-            return m_loggers[hash].get();
         }
-        return nullptr;
+        //
+        LOG_TRACE("GetLogger(tenantId=\"%s\", source=\"%s\")", tenantTokenToId(tenantToken).c_str(), source.c_str());
+
+        std::string normalizedTenantToken = toLower(tenantToken);
+        std::string normalizedSource = toLower(source);
+        std::string hash = normalizedTenantToken + "/" + normalizedSource;
+
+        LOCKGUARD(m_lock);
+        if (!m_alive)
+        {
+            return nullptr;
+        }
+        auto it = m_loggers.find(hash);
+        if (it == std::end(m_loggers))
+        {
+            m_loggers[hash] = std::make_unique<Logger>(
+                normalizedTenantToken, normalizedSource, scope,
+                *this, m_context, *m_config);
+        }
+        uint8_t level = m_diagLevelFilter.GetDefaultLevel();
+        if (level != DIAG_LEVEL_DEFAULT)
+        {
+            m_loggers[hash]->SetLevel(level);
+        }
+        return m_loggers[hash].get();
     }
 
     /// <summary>
@@ -543,7 +660,7 @@ namespace ARIASDK_NS_BEGIN
     /// </summary>
     /// <param name="type">The type.</param>
     /// <param name="listener">The listener.</param>
-    void LogManagerImpl::AddEventListener(DebugEventType type, DebugEventListener &listener)
+    void LogManagerImpl::AddEventListener(DebugEventType type, DebugEventListener& listener)
     {
         m_debugEventSource.AddEventListener(type, listener);
     };
@@ -553,7 +670,7 @@ namespace ARIASDK_NS_BEGIN
     /// </summary>
     /// <param name="type">The type.</param>
     /// <param name="listener">The listener.</param>
-    void LogManagerImpl::RemoveEventListener(DebugEventType type, DebugEventListener &listener)
+    void LogManagerImpl::RemoveEventListener(DebugEventType type, DebugEventListener& listener)
     {
         m_debugEventSource.RemoveEventListener(type, listener);
     };
@@ -569,22 +686,36 @@ namespace ARIASDK_NS_BEGIN
     };
 
     /// <summary>Attach cascaded DebugEventSource to forward all events to</summary>
-    bool LogManagerImpl::AttachEventSource(DebugEventSource & other)
+    bool LogManagerImpl::AttachEventSource(DebugEventSource& other)
     {
         return m_debugEventSource.AttachEventSource(other);
     }
 
     /// <summary>Detach cascaded DebugEventSource to forward all events to</summary>
-    bool LogManagerImpl::DetachEventSource(DebugEventSource & other)
+    bool LogManagerImpl::DetachEventSource(DebugEventSource& other)
     {
         return m_debugEventSource.DetachEventSource(other);
     }
 
     void LogManagerImpl::sendEvent(IncomingEventContextPtr const& event)
     {
+        LOCKGUARD(m_lock);
         if (GetSystem())
         {
-           GetSystem()->sendEvent(event);
+            if (m_customDecorator)
+            {
+                m_customDecorator->decorate(*(event->source));
+            }
+
+            {
+                LOCKGUARD(m_dataInspectorGuard);
+
+                for (const auto& dataInspector : m_dataInspectors)
+                {
+                    dataInspector->InspectRecord(*(event->source));
+                }
+            }
+            GetSystem()->sendEvent(event);
         }
     }
 
@@ -610,7 +741,15 @@ namespace ARIASDK_NS_BEGIN
 
     LogSessionData* LogManagerImpl::GetLogSessionData()
     {
-        return m_logSessionData.get();
+        return (m_logSessionDataProvider) ? m_logSessionDataProvider->GetLogSessionData() : nullptr;
+    }
+
+    void LogManagerImpl::ResetLogSessionData()
+    {
+        if (m_logSessionDataProvider) 
+        {
+            m_logSessionDataProvider->ResetLogSessionData();
+        }
     }
 
     void LogManagerImpl::SetLevelFilter(uint8_t defaultLevel, uint8_t levelMin, uint8_t levelMax)
@@ -630,9 +769,8 @@ namespace ARIASDK_NS_BEGIN
 
     std::unique_ptr<ITelemetrySystem>& LogManagerImpl::GetSystem()
     {
-        LOCKGUARD(m_lock);
         if (m_system == nullptr || m_isSystemStarted)
-           return m_system;
+            return m_system;
 
         m_system->start();
         m_isSystemStarted = true;
@@ -666,4 +804,81 @@ namespace ARIASDK_NS_BEGIN
         return m_dataViewerCollection;
     }
 
-} ARIASDK_NS_END
+    void LogManagerImpl::SetDataInspector(const std::shared_ptr<IDataInspector>& dataInspector)
+    {
+        LOCKGUARD(m_dataInspectorGuard);
+        if(dataInspector == nullptr)
+        {
+            LOG_WARN("Attempting to set nullptr as DataInspector");
+            return;
+        }
+
+        auto itDataInspector = std::find_if(m_dataInspectors.begin(), m_dataInspectors.end(), [&dataInspector](const std::shared_ptr<IDataInspector>& currentInspector)
+        {
+            return strcmp(dataInspector->GetName(), currentInspector->GetName()) == 0;
+        });
+
+        if (itDataInspector != m_dataInspectors.end())
+        {
+            LOG_WARN("Replacing specified IDataInspector with passed in inspector");
+            m_dataInspectors.erase(itDataInspector);
+        }
+
+        m_dataInspectors.push_back(dataInspector);
+    }
+
+    void LogManagerImpl::ClearDataInspectors()
+    {
+        LOCKGUARD(m_dataInspectorGuard);
+        std::vector<std::shared_ptr<IDataInspector>>{}.swap(m_dataInspectors);
+    }
+
+    void LogManagerImpl::RemoveDataInspector(const std::string& name)
+    {
+        LOCKGUARD(m_dataInspectorGuard);
+        auto itDataInspector = std::find_if(m_dataInspectors.begin(), m_dataInspectors.end(), [&name](const std::shared_ptr<IDataInspector>& inspector){
+            return strcmp(inspector->GetName(), name.c_str()) == 0;
+        });
+
+        if (itDataInspector != m_dataInspectors.end())
+        {
+            m_dataInspectors.erase(itDataInspector);
+        }
+    }
+
+    std::shared_ptr<IDataInspector> LogManagerImpl::GetDataInspector(const std::string& name) noexcept
+    {
+        LOCKGUARD(m_dataInspectorGuard);
+        auto it = std::find_if(m_dataInspectors.begin(), m_dataInspectors.end(), [&name](const std::shared_ptr<IDataInspector>& inspector){
+            return strcmp(inspector->GetName(), name.c_str()) == 0;
+        });
+
+        return it != m_dataInspectors.end() ? *it : nullptr;
+    }
+
+    status_t LogManagerImpl::DeleteData()
+    {
+
+        LOCKGUARD(m_lock);
+        if (GetSystem()) 
+        {
+            // cleanup pending http requests
+            GetSystem()->cleanup(); 
+        
+            // cleanup log session ( UUID)
+            if (m_logSessionDataProvider)
+            {
+                m_logSessionDataProvider->DeleteLogSessionData();
+            }
+    
+            // cleanup offline storage ( this will also cleanup retry queue for http requests
+            if (m_offlineStorage) 
+            {	
+                m_offlineStorage->DeleteAllRecords();	
+            }
+        }
+        return STATUS_SUCCESS;
+    }
+}
+MAT_NS_END
+

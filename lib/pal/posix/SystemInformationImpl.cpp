@@ -1,4 +1,7 @@
-// Copyright (c) Microsoft Corporation. All rights reserved.
+//
+// Copyright (c) 2015-2020 Microsoft Corporation and Contributors.
+// SPDX-License-Identifier: Apache-2.0
+//
 #include "pal/PAL.hpp"
 #include "pal/SystemInformationImpl.hpp"
 
@@ -8,7 +11,7 @@
 
 namespace PAL_NS_BEGIN {
 
-    SystemInformationImpl::SystemInformationImpl() : m_info_helper()
+    SystemInformationImpl::SystemInformationImpl(IRuntimeConfig& configuration) : m_info_helper()
     {
         auto sysInfo = sysinfo_sources_impl::GetSysInfo();
         m_user_timezone = sysInfo.get("tz");
@@ -32,9 +35,10 @@ namespace PAL_NS_BEGIN {
         m_info_helper.UnRegisterInformationChangedCallback(callbackToken);
     }
 
-    std::shared_ptr<ISystemInformation> SystemInformationImpl::Create()
+    std::shared_ptr<ISystemInformation> SystemInformationImpl::Create(IRuntimeConfig& configuration)
     {
-        return std::make_shared<SystemInformationImpl>();
+        return std::make_shared<SystemInformationImpl>(configuration);
     }
 
 } PAL_NS_END
+

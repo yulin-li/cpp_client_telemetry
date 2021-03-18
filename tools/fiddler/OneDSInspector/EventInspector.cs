@@ -1,36 +1,19 @@
-﻿// --------------------------------------------------------------------------------------------------------------------
-// <copyright file="EventInspector.cs" company="Microsoft">
-//   2016 Microsoft Corporation
-// </copyright>
-// <summary>
-//   Fiddler inspector extension to view Aria events.
-// </summary>
-// --------------------------------------------------------------------------------------------------------------------
-
-using Bond.IO.Unsafe;
-
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
+﻿//
+// Copyright (c) 2015-2020 Microsoft Corporation and Contributors.
+// SPDX-License-Identifier: Apache-2.0
+//
 
 [assembly: Fiddler.RequiredVersion("2.3.0.0")]
 
 namespace OneDSInspector
 {
+    using Fiddler;
     using System;
+    using System.Collections.Generic;
     using System.Linq;
     using System.Text;
-    using System.IO;
-    using System.IO.Compression;
-    using System.Security.Cryptography;
     using System.Windows.Forms;
-    using System.Collections.Generic;
-
-    using Fiddler;
-    using CommonSchema;
-
-    using Bond;
-    using Bond.Protocols;
-    using Bond.IO.Safe;
+    using Decoder = CommonSchema.Decoder;
 
     public class EventInspector : Inspector2, IRequestInspector2
     {
@@ -70,6 +53,8 @@ namespace OneDSInspector
 
             set
             {
+                headersCopy = value.ToDictionary(key => key.Name, key => key.Value);
+
                 if (!CheckIfPathHasDetails(value))
                 {
                     // Inspect the header for ClientId to see whether it uses Auth or No-Auth.
@@ -83,6 +68,7 @@ namespace OneDSInspector
                     this.ContentEncoding = GetHeaderValue(value, "Content-Encoding");
                 }
             }
+
         }
 
         /// <summary>
@@ -138,6 +124,7 @@ namespace OneDSInspector
         }
 
         // Private Implementation
+        private Dictionary<string, string> headersCopy;
 
         /// <summary>
         /// Gets or sets the text control where the content is visible.
@@ -201,11 +188,11 @@ namespace OneDSInspector
                         String[] headerKeyAndValue = header.Split('=');
                         if (headerKeyAndValue.Length == 2)
                         {
-                            if (headerKeyAndValue[0].Equals("client-id"))
+                            if (headerKeyAndValue[0].Equals("client-id", StringComparison.OrdinalIgnoreCase))
                             {
                                 this.ClientId = headerKeyAndValue[1];
                             }
-                            else if (headerKeyAndValue[0].Equals("content-type"))
+                            else if (headerKeyAndValue[0].Equals("content-type", StringComparison.OrdinalIgnoreCase))
                             {
                                 this.ContentType = Uri.UnescapeDataString(headerKeyAndValue[1]);
                             }
@@ -215,103 +202,6 @@ namespace OneDSInspector
                 return true;
             }
             return false;
-        }
-
-#if false
-        private string IndentJson(string json)
-        {
-            using (var stringReader = new StringReader(json))
-            using (var stringWriter = new StringWriter())
-            {
-                var jsonReader = new JsonTextReader(stringReader);
-                var jsonWriter = new JsonTextWriter(stringWriter) { Formatting = Formatting.Indented, IndentChar = ' ', Indentation = 2 };
-                jsonWriter.WriteToken(jsonReader);
-                return stringWriter.ToString();
-            }
-        }
-#endif
-
-        /// <summary>
-        /// Deserialize the byte data into a DataPackage, then to JSON format.
-        /// </summary>
-        /// <param name="data">The data bytes</param>
-        /// <param name="outputCompactJson">Whether the output JSON should be compact or expanded/human-readble.</param>
-        /// <returns>The JSON representation of the data bytes</returns>
-        private List<string> ConvertPayloadToJson(byte[] data, bool outputCompactJson)
-        {
-            // Before deserializing the payload, check the content encoding first to see if it is
-            // compressed.
-            List<string> jsonList = new List<string>();
-
-            if (!string.IsNullOrEmpty(this.ContentEncoding))
-            {
-                if (this.ContentEncoding == "gzip")
-                {
-                    data = Gunzip(data);
-                }
-                else if (this.ContentEncoding == "deflate")
-                {
-                    data = Deflate(data);
-                }
-                else
-                {
-                    throw new ArgumentException("Unknown Content-Encoding: " + this.ContentEncoding);
-                }
-            }
-
-            // read using Common Schema protocol
-            var outputBuffer = new MemoryStream();
-            try
-            {
-                var input = new InputBuffer(data);
-                var reader = new CompactBinaryReader<InputBuffer>(input);
-                var writer = new SimpleJsonWriter(outputBuffer);
-                do
-                {
-                    var evt = Deserialize<CsEvent>.From(reader);
-                    // exception is thrown here if request is invalid
-                    Serialize.To(writer, evt);
-                    writer.Flush();
-                    jsonList.Add(Encoding.UTF8.GetString(outputBuffer.ToArray()));
-                    outputBuffer.SetLength(0);
-                } while (true);
-            }
-            catch (Exception)
-            {
-                // end of input
-            }
-
-            // consider sending jsonList one-by-one over UDP to remote monitor
-
-            // flatten all into one buffer
-            outputBuffer.WriteByte((byte)'[');
-            int i = 0;
-            jsonList.ForEach((s) =>
-            {
-                if (i > 0)
-                    outputBuffer.WriteByte((byte)',');
-                i++;
-                var buf = Encoding.UTF8.GetBytes(s);
-                outputBuffer.Write(buf, 0, buf.Length);
-            });
-            outputBuffer.WriteByte((byte)']');
-            outputBuffer.WriteByte((byte)'\n');
-
-            // get as string
-            string json = Encoding.UTF8.GetString(outputBuffer.ToArray());
-            try
-            {
-                // pretty-print if necessary
-                if (!outputCompactJson)
-                {
-                    json = JToken.Parse(json).ToString(Formatting.Indented);
-                }
-            }
-            catch (Exception)
-            {
-                // ignore invalid JSON contents here
-            }
-            return json.Split(new string[] { Environment.NewLine }, StringSplitOptions.None).ToList();
         }
 
         /// <summary>
@@ -326,36 +216,6 @@ namespace OneDSInspector
             return header != null ? header.Value : string.Empty;
         }
 
-        /// <summary>
-        /// Helper routine to gunzip compressed data.
-        /// </summary>
-        /// <param name="data">The compressed data</param>
-        /// <returns>The gunzip'd data</returns>
-        private static byte[] Gunzip(byte[] data)
-        {
-            var inStream = new MemoryStream(data);
-            var gzipStream = new GZipStream(inStream, CompressionMode.Decompress);
-            var outStream = new MemoryStream();
-
-            gzipStream.CopyTo(outStream);
-            return outStream.ToArray();
-        }
-
-        /// <summary>
-        /// Helper routine to deflate compressed data.
-        /// </summary>
-        /// <param name="data">The compressed data</param>
-        /// <returns>The delated data</returns>
-        private static byte[] Deflate(byte[] data)
-        {
-            var inStream = new MemoryStream(data);
-            var deflateStream = new DeflateStream(inStream, CompressionMode.Decompress);
-            var outStream = new MemoryStream();
-
-            deflateStream.CopyTo(outStream);
-            return outStream.ToArray();
-        }
-
         public void UpdatePayloadView()
         {
             byte[] body = this.SavedBody;
@@ -364,7 +224,10 @@ namespace OneDSInspector
 
             try
             {
-                jsonList = ConvertPayloadToJson(body, outputCompactJson);
+                // var items = headers.ToArray();
+                Decoder decoder = new Decoder(headersCopy, body);
+                string json = decoder.ToJson(outputCompactJson, true, (outputCompactJson) ? -1 : 2);
+                jsonList = json.Split(new string[] { Environment.NewLine }, StringSplitOptions.None).ToList();
             }
             catch (Exception exception)
             {
@@ -372,7 +235,6 @@ namespace OneDSInspector
                 jsonList = new List<string>();
                 jsonList.Add(exception.Message);
             }
-
             this.PayloadViewerControl.SetText(jsonList);
         }
     }

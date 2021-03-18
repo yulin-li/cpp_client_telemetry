@@ -1,12 +1,16 @@
+//
+// Copyright (c) 2015-2020 Microsoft Corporation and Contributors.
+// SPDX-License-Identifier: Apache-2.0
+//
 #include "pal/PAL.hpp"
 
-#include "bond/generated/CsProtocol_types.hpp"
+#include "CsProtocol_types.hpp"
 #include "EventProperty.hpp"
 #include "EventProperties.hpp"
 #include "EventPropertiesStorage.hpp"
 #include "DebugEvents.hpp"
 #include "ILogManager.hpp"
-#include "utils/Utils.hpp"
+#include "utils/StringUtils.hpp"
 #include <string>
 #include <algorithm>
 #include <cctype>
@@ -17,7 +21,7 @@
 using namespace std;
 using namespace MAT;
 
-namespace ARIASDK_NS_BEGIN {
+namespace MAT_NS_BEGIN {
 
     const char* const DefaultEventName = "undefined";
 
@@ -160,6 +164,7 @@ namespace ARIASDK_NS_BEGIN {
         if (priority >= EventPriority_Low)
         {
             // TODO: 1438270 - [v3][1DS] Direct upload to respect low priority
+            // Any changes to this method needs corresponding fixes in Java code.
             m_storage->eventLatency = EventLatency_Normal;
             m_storage->eventPersistence = EventPersistence_Normal;
         }
@@ -421,7 +426,6 @@ namespace ARIASDK_NS_BEGIN {
             break;
         case TYPE_GUID:
             lhs.value.as_guid = new evt_guid_t();
-            // TODO: copy from GUID_t to aria_guid_t
             break;
 #if 0
         case TYPE_STRING_ARRAY:
@@ -446,6 +450,11 @@ namespace ARIASDK_NS_BEGIN {
     {
         size_t size = m_storage->properties.size() + m_storage->propertiesPartB.size() + 1;
         evt_prop * result = static_cast<evt_prop *>(calloc(sizeof(evt_prop), size));
+        if (result==nullptr)
+        {
+            LOG_ERROR("Unable to allocate memory to pack EventProperties");
+            return result;
+        };
         size_t i = 0;
         for(auto &props : { m_storage->properties, m_storage->propertiesPartB })
             for (auto &kv : props)
@@ -479,6 +488,11 @@ namespace ARIASDK_NS_BEGIN {
     bool EventProperties::unpack(evt_prop *packed, size_t size)
     {
         evt_prop *curr = packed;
+        if (packed==nullptr)
+        {
+            // Invalid input (nullptr) from C API results in an empty property bag
+            return false;
+        };
 
         // Verify size using size_t size parameter passed down by evt_log_s API call
         if (size == 0)
@@ -579,5 +593,6 @@ namespace ARIASDK_NS_BEGIN {
     }
 #endif /* end of MAT_C_API */
 
-} ARIASDK_NS_END
+} MAT_NS_END
+
 

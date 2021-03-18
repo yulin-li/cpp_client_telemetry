@@ -1,3 +1,7 @@
+//
+// Copyright (c) 2015-2020 Microsoft Corporation and Contributors.
+// SPDX-License-Identifier: Apache-2.0
+//
 // clang-format off
 #ifndef TASK_DISPATCHER_HPP
 #define TASK_DISPATCHER_HPP
@@ -15,13 +19,12 @@
 #include <utility>
 
 #include "ITaskDispatcher.hpp"
-#include "Version.hpp"
+#include "ctmacros.hpp"
 
 namespace PAL_NS_BEGIN {
 
     namespace detail {
 
-        // TODO: [MG] - allow lambdas, std::function, functors, etc.
         template<typename TCall>
         class TaskCall : public Task
         {
@@ -132,3 +135,4 @@ namespace PAL_NS_BEGIN {
 } PAL_NS_END
 
 #endif
+

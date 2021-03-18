@@ -1,3 +1,7 @@
+//
+// Copyright (c) 2015-2020 Microsoft Corporation and Contributors.
+// SPDX-License-Identifier: Apache-2.0
+//
 #include "PayloadDecoder.hpp"
 
 #include <algorithm>
@@ -21,8 +25,9 @@
 
 /* Bond definition of CsProtocol::Record is auto-generated and could be different for each SDK version */
 #include "bond/All.hpp"
-#include "bond/generated/CsProtocol_types.hpp"
+#include "CsProtocol_types.hpp"
 #include "bond/generated/CsProtocol_readers.hpp"
+#include "utils/ZlibUtils.hpp"
 
 #include "zlib.h"
 #undef compress
@@ -58,7 +63,7 @@ namespace clienttelemetry {
                         {
                             if (j + 2 < length)
                             {
-                                if (test[j + 1] == '3' && test[j + 2] == '.')
+                                if (test[j + 1] == ('0'+::CsProtocol::CS_VER_MAJOR) && test[j + 2] == '.')
                                 {
                                     found = true;
                                     break;
@@ -226,6 +231,10 @@ namespace clienttelemetry {
                                                         { "ticketKeys",  r.extProtocol[0].ticketKeys },
                                                         { "devMake",     r.extProtocol[0].devMake },
                                                         { "devModel",    r.extProtocol[0].devModel }
+#ifdef HAVE_CS4
+                                                        ,
+                                                        { "msp",         r.extProtocol[0].msp }
+#endif
                                                     }
                                                 },
                                                 { "user" ,                                           // 22: optional vector<User> extUser
@@ -244,7 +253,11 @@ namespace clienttelemetry {
                                                         { "id",          r.extDevice[0].id },
                                                         { "localId",     r.extDevice[0].localId },
                                                         { "make",        r.extDevice[0].make },
-                                                        { "model",       r.extDevice[0].model },
+                                                        { "model",       r.extDevice[0].model }
+#ifdef HAVE_CS4
+                                                        ,
+                                                        { "authIdEnt",   r.extDevice[0].authIdEnt }
+#endif
                                                      }
                                                 },
                                                 { "os",                                              // 24: optional vector<Os> extOs
@@ -266,6 +279,10 @@ namespace clienttelemetry {
                                                         { "ver",     r.extApp[0].ver },
                                                         { "locale",  r.extApp[0].locale },
                                                         { "name",    r.extApp[0].name }
+#ifdef HAVE_CS4
+                                                        ,
+                                                        { "sesId",   r.extApp[0].sesId }
+#endif
                                                      }
                                                 },
                     /*
@@ -285,7 +302,11 @@ namespace clienttelemetry {
                                                      {
                                                         { "epoch",     r.extSdk[0].epoch },
                                                         { "installId", r.extSdk[0].installId },
+#ifdef HAVE_CS4
+                                                        { "ver",       r.extSdk[0].ver }
+#else
                                                         { "libVer",    r.extSdk[0].libVer}
+#endif
                                                      }
                                                 }
                     /*
@@ -295,6 +316,17 @@ namespace clienttelemetry {
                                             }
                                         }
                 };
+
+#ifdef HAVE_CS4
+                if (r.extM365a.size())
+                {
+                    j["ext"]["m365"] = json
+                    {
+                        {"enrolledTenantId", r.extM365a[0].enrolledTenantId},
+                        {"msp", r.extM365a[0].msp }
+                    };
+                }
+#endif
 
                 if (r.ext.size())
                 {
@@ -459,55 +491,13 @@ namespace clienttelemetry {
 
                 return result;
             }
-
-            bool InflateVector(const std::vector<uint8_t>& in, std::vector<uint8_t>& out)
-            {
-                bool result = true;
-
-                z_stream zs;
-                memset(&zs, 0, sizeof(zs));
-
-                // [MG]: must call inflateInit2 with -9 because otherwise
-                // it'd be searching for non-existing gzip header...
-                if (inflateInit2(&zs, -9) != Z_OK)
-                {
-                    return false;
-                }
-
-                zs.next_in = (Bytef *)in.data();
-                zs.avail_in = (uInt)in.size();
-                int ret;
-                // The problem with 32K is that it's too small and causes corruption
-                // in zlib inflate. 128KB seems to be fine.
-                // Allocate a buffer enough to hold an output with Zlib max compression
-                // ratio 5:1 in case it is larger than 128KB.
-                uInt outbufferSize = std::max((uInt)131072, zs.avail_in * 5);
-
-                char* outbuffer = new char[outbufferSize];
-                do
-                {
-                    zs.next_out = reinterpret_cast<Bytef*>(outbuffer);
-                    zs.avail_out = outbufferSize;
-                    ret = inflate(&zs, Z_NO_FLUSH);
-                    out.insert(out.end(), outbuffer, outbuffer + zs.total_out);
-                } while (ret == Z_OK);
-                if (ret != Z_STREAM_END)
-                {
-                    TEST_LOG_ERROR("Unable to successfully decompress into buffer");
-                    result = false;
-                }
-                inflateEnd(&zs);
-                delete[] outbuffer;
-                return result;
-            }
-
         }
     }
 }
 
 using namespace clienttelemetry::data::v3;
 
-namespace ARIASDK_NS_BEGIN {
+namespace MAT_NS_BEGIN {
 
     namespace exporters {
 
@@ -524,7 +514,7 @@ namespace ARIASDK_NS_BEGIN {
             std::vector<uint8_t> buffer;
             if (compressed)
             {
-                if (!InflateVector(in, buffer))
+                if (!ZlibUtils::InflateVector(in, buffer, false /* isGzip */))
                 {
                     TEST_LOG_ERROR("Failed to inflate compressed data");
                     return false;
@@ -566,4 +556,5 @@ namespace ARIASDK_NS_BEGIN {
 
     }
 
-} ARIASDK_NS_END
+} MAT_NS_END
+

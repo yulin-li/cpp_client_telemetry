@@ -1,4 +1,7 @@
-// Copyright (c) Microsoft. All rights reserved.
+//
+// Copyright (c) 2015-2020 Microsoft Corporation and Contributors.
+// SPDX-License-Identifier: Apache-2.0
+//
 
 #pragma once
 #include "Common.hpp"
@@ -9,6 +12,11 @@
 
 
 namespace testing {
+
+#if defined(__clang__)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Winconsistent-missing-override"  // GMock MOCK_METHOD* macros don't use override.
+#endif
 
     class MockILogManagerInternal : public MAT::ILogManagerInternal
     {
@@ -46,4 +54,9 @@ namespace testing {
         MOCK_METHOD1(sendEvent, void(MAT::IncomingEventContextPtr const &));
     };
 
+#if defined(__clang__)
+#pragma clang diagnostic pop
+#endif
+
 } // namespace testing
+

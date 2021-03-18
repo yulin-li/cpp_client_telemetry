@@ -1,4 +1,7 @@
-// Copyright (c) Microsoft. All rights reserved.
+//
+// Copyright (c) 2015-2020 Microsoft Corporation and Contributors.
+// SPDX-License-Identifier: Apache-2.0
+//
 #ifndef WINDOWSENVIRONMENTINFO_HPP
 #define WINDOWSENVIRONMENTINFO_HPP
 
@@ -6,7 +9,7 @@
 #include <string>
 #include <stdint.h>
 
-namespace ARIASDK_NS_BEGIN {
+namespace MAT_NS_BEGIN {
 
     class WindowsEnvironmentInfo
     {
@@ -42,13 +45,13 @@ namespace ARIASDK_NS_BEGIN {
             }
             else
             {
-                // TODO: [MG] - fix this benign compiler warning
-                // Warning	C6102	Using 'timeZone' from failed function call at line '46'
+                // TODO: [MG] - ref. https://docs.microsoft.com/en-us/windows/win32/api/timezoneapi/nf-timezoneapi-gettimezoneinformation
+                // Need to handle the case when API return TIME_ZONE_ID_UNKNOWN. Otherwise we may be reporting invalid timeZone.Bias
                 return TimeZoneBiasToISO8601(timeZone.Bias + timeZone.StandardBias);
             }
         };
     protected:
-        // Convert a bias in minutes to the ISO 8601 time zone representaiton.
+        // Convert a bias in minutes to the ISO 8601 time zone representations.
         // ISO 8601 examples: +01:30, -08
         static std::string TimeZoneBiasToISO8601(long bias)
         {
@@ -61,5 +64,6 @@ namespace ARIASDK_NS_BEGIN {
         }
     };
 
-} ARIASDK_NS_END
+} MAT_NS_END
 #endif
+

@@ -62,18 +62,25 @@ unknown | Device has not determined its power state.
 any | Matches any power state (omitting the selector also matches any power state)
 
 ### Selectors and Rule Precedence
+
 If a rule includes selectors, all selectors must match in order to choose the rule. The first rule that matches will be chosen. The example JSON includes a default rule that will always match (because it has no selectors). A match-everything default rule should always be the last rule (rules following it can never be selected since it matches everything, and the first matching rule wins).
 
 ### Timers
+
 Each rule must include a timers array. The timers array should contain three values. The first value controls upload of `EventLatency_Normal` and `EventLatency_CostDeferred` events. The second value is not used and is retained for backwards compatibility. The third value controls and sets the cadence for `EventLatency_RealTime` events. For example, if it is 5, the SDK will accumulate and upload `EventLatency_RealTime` events every 5 seconds.
 
 #### Negative Timer Values
+
 If the first timer value is negative, no `EventLatency_Normal` or `EventLatency_CostDeferred` events will be uploaded. If the third timer value is negative, only `EventLatency_Max` events will be uploaded.
 
 #### Cadence And EventLatency
+
 When the first and third timer values are both positive, the value of the first value does not matter (as of this writing). `EventLatency_Normal` and `EventLatency_CostDeferred` events will be collected and uploaded half as often as `EventLatency_RealTime` events.
+
 #### Best Practice
+
 Following these suggestions will help make the rule definition and SDK behavior clear:
+
 * The first and second timer values should be equal. The SDK ignores the second timer value, but it once controlled `EventLatency_CostDeferred` events. Setting the two numbers to the same value documents that the two latencies are treated identically.
 * If the first and third timer values are positive, the first and second should be twice the third. For example, `[4, 4, 2]` follows this rule. This matches the SDK's behavior: lower priority events are uploaded half as often as `EventLatency_RealTime` events.
 * If the third timer value is negative, the first and second should also be negative. The SDK will not upload any of these events if the third timer value is negative, so setting all three to the same negative value matches this behavior.

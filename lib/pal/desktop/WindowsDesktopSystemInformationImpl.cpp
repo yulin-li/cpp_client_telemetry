@@ -1,3 +1,7 @@
+//
+// Copyright (c) 2015-2020 Microsoft Corporation and Contributors.
+// SPDX-License-Identifier: Apache-2.0
+//
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN             // Exclude rarely-used stuff from Windows headers
 #endif
@@ -39,9 +43,9 @@ namespace PAL_NS_BEGIN {
 
     const std::string WindowsOSName = "Windows Desktop";
 
-    std::shared_ptr<ISystemInformation> SystemInformationImpl::Create()
+    std::shared_ptr<ISystemInformation> SystemInformationImpl::Create(IRuntimeConfig& configuration)
     {
-        return std::make_shared<SystemInformationImpl>();
+        return std::make_shared<SystemInformationImpl>(configuration);
     }
 
     /**
@@ -154,10 +158,15 @@ namespace PAL_NS_BEGIN {
     std::string getCommercialId()
     {
         char buff[MAX_PATH] = { 0 };
+        const PCSTR c_groupPolicyDataCollection_Key = "SOFTWARE\\Policies\\Microsoft\\Windows\\DataCollection";
         const PCSTR c_dataCollection_Key = "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\DataCollection";
         const PCSTR c_commercialId = "CommercialId";
         DWORD size = sizeof(buff);
-        RegGetValueA(HKEY_LOCAL_MACHINE, c_dataCollection_Key, c_commercialId, RRF_RT_REG_SZ, NULL, (char*)buff, &size);
+        if (RegGetValueA(HKEY_LOCAL_MACHINE, c_groupPolicyDataCollection_Key, c_commercialId, RRF_RT_REG_SZ, NULL, static_cast<char*>(buff), &size) != ERROR_SUCCESS)
+        {
+            size = sizeof(buff);
+            RegGetValueA(HKEY_LOCAL_MACHINE, c_dataCollection_Key, c_commercialId, RRF_RT_REG_SZ, NULL, static_cast<char*>(buff), &size);
+        }
         return buff;
     }
 
@@ -173,7 +182,7 @@ namespace PAL_NS_BEGIN {
         typedef NTSTATUS(__stdcall * RtlGetVersion_t)(PRTL_OSVERSIONINFOW);
         RtlGetVersion_t pRtlGetVersion = hNtDll ? reinterpret_cast<RtlGetVersion_t>(::GetProcAddress(hNtDll, "RtlGetVersion")) : nullptr;
 
-        RTL_OSVERSIONINFOW rtlOsvi = { sizeof(rtlOsvi) };
+        RTL_OSVERSIONINFOW rtlOsvi = { sizeof(rtlOsvi), 0, 0, 0, 0, {0} };
         if (pRtlGetVersion && SUCCEEDED(pRtlGetVersion(&rtlOsvi)))
         {
             osMajorVersion = std::to_string((long long)rtlOsvi.dwMajorVersion) + "." + std::to_string((long long)rtlOsvi.dwMinorVersion);
@@ -212,7 +221,7 @@ namespace PAL_NS_BEGIN {
         return appId;
     }
 
-    SystemInformationImpl::SystemInformationImpl()
+    SystemInformationImpl::SystemInformationImpl(IRuntimeConfig& /*configuration*/)
         : m_info_helper()
     {
 
@@ -266,3 +275,4 @@ namespace PAL_NS_BEGIN {
     }
 
 } PAL_NS_END
+

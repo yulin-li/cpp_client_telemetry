@@ -1,12 +1,15 @@
 // clang-format off
-// Copyright (c) Microsoft. All rights reserved.
+//
+// Copyright (c) 2015-2020 Microsoft Corporation and Contributors.
+// SPDX-License-Identifier: Apache-2.0
+//
 #include "mat/config.h"
 
 #ifdef HAVE_MAT_DEFAULT_HTTP_CLIENT
 #pragma warning(push)
 #pragma warning(disable:4189)   /* Turn off Level 4: local variable is initialized but not referenced. dwError unused in Release without printing it. */
 #include "HttpClient_WinInet.hpp"
-#include "utils/Utils.hpp"
+#include "utils/StringUtils.hpp"
 
 #include <Wincrypt.h>
 #include <WinInet.h>
@@ -17,7 +20,7 @@
 #include <vector>
 #include <oacr.h>
 
-namespace ARIASDK_NS_BEGIN {
+namespace MAT_NS_BEGIN {
 
 class WinInetRequestWrapper
 {
@@ -34,8 +37,8 @@ class WinInetRequestWrapper
   public:
     WinInetRequestWrapper(HttpClient_WinInet& parent, SimpleHttpRequest* request)
       : m_parent(parent),
-        m_request(request),
-        m_id(request->GetId())
+        m_id(request->GetId()),
+        m_request(request)
     {
         LOG_TRACE("%p WinInetRequestWrapper()", this);
     }
@@ -96,10 +99,10 @@ class WinInetRequestWrapper
         // regressions for downlevel OS.
         if (::InternetQueryOption(m_hWinInetRequest, INTERNET_OPTION_SERVER_CERT_CHAIN_CONTEXT, (LPVOID)&pCertCtx, &dwCertChainContextSize))
         {
-            CERT_CHAIN_POLICY_STATUS pps = {0};
+            CERT_CHAIN_POLICY_STATUS pps = { 0, 0, 0, 0, nullptr };
             pps.cbSize = sizeof(pps);
             // Verify that the cert chain roots up to the Microsoft application root at top level
-            CERT_CHAIN_POLICY_PARA policyPara = {0};
+            CERT_CHAIN_POLICY_PARA policyPara = {0, 0, nullptr };
             policyPara.cbSize = sizeof(policyPara);
             policyPara.dwFlags = MICROSOFT_ROOT_CERT_CHAIN_POLICY_CHECK_APPLICATION_ROOT_FLAG;
             policyPara.pvExtraPolicyPara = nullptr;
@@ -557,7 +560,8 @@ bool HttpClient_WinInet::IsMsRootCheckRequired()
     return m_msRootCheck;
 }
 
-} ARIASDK_NS_END
+} MAT_NS_END
 #pragma warning(pop)
 #endif // HAVE_MAT_DEFAULT_HTTP_CLIENT
 // clang-format on
+

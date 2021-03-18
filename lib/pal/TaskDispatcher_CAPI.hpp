@@ -1,9 +1,13 @@
+//
+// Copyright (c) 2015-2020 Microsoft Corporation and Contributors.
+// SPDX-License-Identifier: Apache-2.0
+//
 #ifndef TASK_DISPATCHER_CAPI_HPP
 #define TASK_DISPATCHER_CAPI_HPP
 
 #include "ITaskDispatcher.hpp"
 #include "mat.h"
-#include "Version.hpp"
+#include "ctmacros.hpp"
 
 namespace PAL_NS_BEGIN {
     class TaskDispatcher_CAPI : public MAT::ITaskDispatcher
@@ -22,3 +26,4 @@ namespace PAL_NS_BEGIN {
 } PAL_NS_END
 
 #endif
+

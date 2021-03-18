@@ -1,3 +1,7 @@
+//
+// Copyright (c) 2015-2020 Microsoft Corporation and Contributors.
+// SPDX-License-Identifier: Apache-2.0
+//
 #ifndef WORKER_THREAD_HPP
 #define WORKER_THREAD_HPP
 
@@ -13,7 +17,7 @@
 #include <memory>
 
 #include "ITaskDispatcher.hpp"
-#include "Version.hpp"
+#include "ctmacros.hpp"
 
 namespace PAL_NS_BEGIN {
 

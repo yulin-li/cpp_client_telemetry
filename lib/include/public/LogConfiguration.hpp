@@ -1,8 +1,9 @@
-// Copyright (c) Microsoft. All rights reserved.
+//
+// Copyright (c) 2015-2020 Microsoft Corporation and Contributors.
+// SPDX-License-Identifier: Apache-2.0
+//
 #ifndef MAT_LOGCONFIGURATION_HPP
 #define MAT_LOGCONFIGURATION_HPP
-
-#include "Version.hpp"
 
 #include "ILogConfiguration.hpp"
 
@@ -97,7 +98,7 @@ namespace Microsoft {
     }
 }
 
-namespace ARIASDK_NS_BEGIN {
+namespace MAT_NS_BEGIN {
 
     MATSDK_LIBABI const ILogConfiguration& GetDefaultConfiguration();
 
@@ -105,6 +106,7 @@ namespace ARIASDK_NS_BEGIN {
 
     MATSDK_LIBABI ILogConfiguration FromJSON(const char* json);
 
-} ARIASDK_NS_END
+} MAT_NS_END
 
 #endif
+

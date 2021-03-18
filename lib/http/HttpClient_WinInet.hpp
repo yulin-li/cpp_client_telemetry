@@ -1,4 +1,7 @@
-// Copyright (c) Microsoft. All rights reserved.
+//
+// Copyright (c) 2015-2020 Microsoft Corporation and Contributors.
+// SPDX-License-Identifier: Apache-2.0
+//
 #ifndef HTTPCLIENT_WININET_HPP
 #define HTTPCLIENT_WININET_HPP
 
@@ -9,7 +12,7 @@
 
 #include "ILogManager.hpp"
 
-namespace ARIASDK_NS_BEGIN {
+namespace MAT_NS_BEGIN {
 
 #ifndef _WININET_
 typedef void* HINTERNET;
@@ -22,10 +25,10 @@ class HttpClient_WinInet : public IHttpClient {
     // Common IHttpClient methods
     HttpClient_WinInet();
     virtual ~HttpClient_WinInet();
-    virtual IHttpRequest* CreateRequest() override;
-    virtual void SendRequestAsync(IHttpRequest* request, IHttpResponseCallback* callback) override;
-    virtual void CancelRequestAsync(std::string const& id) override;
-    virtual void CancelAllRequests() override;
+    virtual IHttpRequest* CreateRequest() final;
+    virtual void SendRequestAsync(IHttpRequest* request, IHttpResponseCallback* callback) final;
+    virtual void CancelRequestAsync(std::string const& id) final;
+    virtual void CancelAllRequests() final;
 
     // Methods unique to WinInet implementation.
     void SetMsRootCheck(bool enforceMsRoot);
@@ -43,8 +46,9 @@ class HttpClient_WinInet : public IHttpClient {
     friend class WinInetRequestWrapper;
 };
 
-} ARIASDK_NS_END
+} MAT_NS_END
 
 #endif // HAVE_MAT_DEFAULT_HTTP_CLIENT
 
 #endif // HTTPCLIENT_WININET_HPP
+

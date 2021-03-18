@@ -1,8 +1,12 @@
+//
+// Copyright (c) 2015-2020 Microsoft Corporation and Contributors.
+// SPDX-License-Identifier: Apache-2.0
+//
 #pragma once
 #pragma warning( push )
 #pragma warning( disable : 4454 )
 
-#include <Version.hpp>
+#include <ctmacros.hpp>
 #include "PlatformHelpers.h"
 #include "SchemaStub.hpp"
 

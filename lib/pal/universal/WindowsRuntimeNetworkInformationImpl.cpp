@@ -1,3 +1,7 @@
+//
+// Copyright (c) 2015-2020 Microsoft Corporation and Contributors.
+// SPDX-License-Identifier: Apache-2.0
+//
 #include <windows.h>
 #include "pal/NetworkInformationImpl.hpp"
 #include <exception>
@@ -60,16 +64,29 @@ namespace PAL_NS_BEGIN {
                     return NetworkCost_Unknown;
                 }
 
-                NetworkInformationImpl::NetworkInformationImpl(bool isNetDetectEnabled) :
+                NetworkInformationImpl::NetworkInformationImpl(IRuntimeConfig& configuration) :
                     m_info_helper(),
                     m_registeredCount(0),
-                    m_isNetDetectEnabled(isNetDetectEnabled)
+                    m_isNetDetectEnabled(configuration[CFG_BOOL_ENABLE_NET_DETECT])
                 {
+                    m_type = NetworkType_Unknown;
+                    m_cost = NetworkCost_Unknown;
+
+                    token.Value = 0;
+
+                    // If Network Detector is turned off, then no need to obtain NetworkInformation.
+                    if (!m_isNetDetectEnabled)
+                    {
+                        return;
+                    }
+
                     // NetworkInformation::GetInternetConnectionProfile() may fail under
-                    // some unknown scenarios on some Windows versions (Windows API bug),
-                    // so we assume the network type and cost both as Unknown.
+                    // some unknown scenarios on some Windows versions (Windows API bug).
+                    // In those cases we assume the network type and cost both as Unknown.
                     try {
                         auto profile = NetworkInformation::GetInternetConnectionProfile();
+                        if (profile == nullptr)
+                            return;
                         m_type = GetNetworkTypeForProfile(profile);
                         m_cost = GetNetworkCostForProfile(profile);
                     }
@@ -96,7 +113,7 @@ namespace PAL_NS_BEGIN {
                                     networkType = GetNetworkTypeForProfile(profile);
                                     networkCost = GetNetworkCostForProfile(profile);
                                 }
-                                // No need for the lock here - the event is called syncronously.
+                                // No need for the lock here - the event is called synchronously.
                                 if (m_type != networkType)
                                 {
                                     m_type = networkType;
@@ -124,12 +141,16 @@ namespace PAL_NS_BEGIN {
 
                 NetworkInformationImpl::~NetworkInformationImpl()
                 {
-                    NetworkInformation::NetworkStatusChanged -= token;
+                    if (token.Value != 0)
+                    {
+                        NetworkInformation::NetworkStatusChanged -= token;
+                    }
                 };
 
-                std::shared_ptr<INetworkInformation> NetworkInformationImpl::Create(bool isNetDetectEnabled)
+                std::shared_ptr<INetworkInformation> NetworkInformationImpl::Create(IRuntimeConfig& configuration)
                 {
-                    return std::make_shared<NetworkInformationImpl>(isNetDetectEnabled);
+                    return std::make_shared<NetworkInformationImpl>(configuration);
                 }
 
 } PAL_NS_END
+

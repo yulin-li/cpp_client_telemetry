@@ -1,6 +1,25 @@
-// Copyright (c) Microsoft. All rights reserved.
+/*
+ * Copyright (c) 2015-2020 Microsoft Corporation and Contributors.
+ * SPDX-License-Identifier: Apache-2.0
+ */
 #ifndef CTMACROS_HPP
 #define CTMACROS_HPP
+
+#ifdef  HAVE_MAT_SHORT_NS
+#define MAT_NS_BEGIN  MAT
+#define MAT_NS_END
+#define PAL_NS_BEGIN  PAL
+#define PAL_NS_END
+#else
+#define MAT_NS_BEGIN  Microsoft { namespace Applications { namespace Events
+#define MAT_NS_END    }}
+#define MAT           ::Microsoft::Applications::Events
+#define PAL_NS_BEGIN  Microsoft { namespace Applications { namespace Events { namespace PlatformAbstraction
+#define PAL_NS_END    }}}
+#define PAL           ::Microsoft::Applications::Events::PlatformAbstraction
+#endif
+
+#define MAT_v1        ::Microsoft::Applications::Telemetry
 
 #ifdef _WIN32       // Windows platforms
 
@@ -94,7 +113,7 @@
 #endif
 
 #if defined(__arm__) || defined(_M_ARM) || defined(_M_ARMT)
-/* TODO: add suport for 64-bit aarch64 */
+/* TODO: add support for 64-bit aarch64 */
 #define ARCH_ARM
 #endif
 

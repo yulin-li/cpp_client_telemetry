@@ -1,7 +1,10 @@
-// Copyright (c) Microsoft. All rights reserved.
+//
+// Copyright (c) 2015-2020 Microsoft Corporation and Contributors.
+// SPDX-License-Identifier: Apache-2.0
+//
 
 #include "HttpClientManager.hpp"
-#include "utils/Utils.hpp"
+#include "utils/StringUtils.hpp"
 #include "pal/TaskDispatcher.hpp"
 
 #include <assert.h>
@@ -22,7 +25,7 @@
 // Linux and Mac OS X with libcurl require an async handler for now
 #endif
 
-namespace ARIASDK_NS_BEGIN {
+namespace MAT_NS_BEGIN {
 
 
     class HttpClientManager::HttpCallback : public IHttpResponseCallback
@@ -63,7 +66,7 @@ namespace ARIASDK_NS_BEGIN {
 
         virtual ~HttpCallback()
         {
-            LOG_TRACE("destroy HTTP callback=%p ctx=%p", this, m_ctx);
+            LOG_TRACE("destroy HTTP callback=%p ctx=%p", this, m_ctx.get());
         }
 
     public:
@@ -112,7 +115,10 @@ namespace ARIASDK_NS_BEGIN {
         EventsUploadContextPtr &ctx = callback->m_ctx;
         {
             LOCKGUARD(m_httpCallbacksMtx);
-            assert(std::find(m_httpCallbacks.cbegin(), m_httpCallbacks.cend(), callback) != m_httpCallbacks.end());
+            auto z = std::find(m_httpCallbacks.cbegin(), m_httpCallbacks.cend(), callback);
+            if (z == m_httpCallbacks.end()) {
+                assert(false);
+            }
 
 #if !defined(NDEBUG) && defined(HAVE_MAT_LOGGING)
             // Response may be null if request got aborted
@@ -149,4 +155,5 @@ namespace ARIASDK_NS_BEGIN {
 
     // start async cancellation
 
-} ARIASDK_NS_END
+} MAT_NS_END
+

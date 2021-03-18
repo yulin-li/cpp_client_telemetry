@@ -1,6 +1,9 @@
 #include "mat/config.h"
 #ifdef HAVE_MAT_STORAGE
-// Copyright (c) Microsoft. All rights reserved.
+//
+// Copyright (c) 2015-2020 Microsoft Corporation and Contributors.
+// SPDX-License-Identifier: Apache-2.0
+//
 
 #pragma once
 #include "pal/PAL.hpp"
@@ -16,14 +19,14 @@
 
 #define ENABLE_LOCKING      // Enable DB locking for flush
 
-namespace ARIASDK_NS_BEGIN {
+namespace MAT_NS_BEGIN {
 
     class SqliteDB;
 
     class OfflineStorage_SQLite : public IOfflineStorage
     {
     public:
-        OfflineStorage_SQLite(ILogManager& logManager, IRuntimeConfig& runtimeConfig, bool inMemory = false);
+        OfflineStorage_SQLite(ILogManager& logManager, IRuntimeConfig& runtimeConfig, bool inMemory=false);
 
         virtual ~OfflineStorage_SQLite() override;
         virtual void Initialize(IOfflineStorageObserver& observer) override;
@@ -31,16 +34,19 @@ namespace ARIASDK_NS_BEGIN {
         virtual void Flush() override {};
         virtual void Execute(std::string command);
         virtual bool StoreRecord(StorageRecord const& record) override;
+        virtual size_t StoreRecords(std::vector<StorageRecord> & records) override;
         virtual bool GetAndReserveRecords(std::function<bool(StorageRecord&&)> const& consumer, unsigned leaseTimeMs, EventLatency minLatency = EventLatency_Normal, unsigned maxCount = 0) override;
         virtual bool IsLastReadFromMemory() override;
         virtual unsigned LastReadRecordCount() override;
 
         virtual void DeleteRecords(const std::map<std::string, std::string> & whereFilter) override;
+        virtual void DeleteAllRecords() override;
         virtual void DeleteRecords(std::vector<StorageRecordId> const& ids, HttpHeaders headers, bool& fromMemory) override;
         virtual void ReleaseRecords(std::vector<StorageRecordId> const& ids, bool incrementRetryCount, HttpHeaders headers, bool& fromMemory) override;
 
         virtual bool StoreSetting(std::string const& name, std::string const& value) override;
         virtual std::string GetSetting(std::string const& name) override;
+        virtual bool DeleteSetting(std::string const& name) override;
         virtual size_t GetSize() override;
         virtual size_t GetRecordCount(EventLatency latency) const override;
         virtual std::vector<StorageRecord> GetRecords(bool shutdown, EventLatency minLatency = EventLatency_Normal, unsigned maxCount = 0) override;
@@ -50,13 +56,12 @@ namespace ARIASDK_NS_BEGIN {
         bool initializeDatabase();
         bool recreate(unsigned failureCode);
 
-        std::vector<uint8_t> packageIdList(std::vector<std::string> const& ids);
+        std::vector<uint8_t> packageIdList(
+            std::vector<std::string>::const_iterator const & begin,
+            std::vector<std::string>::const_iterator const & end) const;
 
         // Debug routine to print record count in the DB
         void printRecordCount();
-
-        // Perform DB full check once a minute
-        const size_t                DB_FULL_CHECK_TIME_MS = 5000;
 
     protected:
         mutable std::recursive_mutex m_lock {};
@@ -85,6 +90,7 @@ namespace ARIASDK_NS_BEGIN {
         size_t                      m_stmtTrimEvents_percent {};
         size_t                      m_stmtDeleteEvents_ids {};
         size_t                      m_stmtReleaseExpiredEvents {};
+        size_t                      m_stmtDeleteEvents_tenants {};
         size_t                      m_stmtSelectEvents {};
         size_t                      m_stmtSelectEventAtShutdown {};
         size_t                      m_stmtSelectEventsMinlatency {};
@@ -99,6 +105,7 @@ namespace ARIASDK_NS_BEGIN {
         unsigned                    m_lastReadCount {};
         std::string                 m_offlineStorageFileName {};
         unsigned                    m_DbSizeNotificationLimit {};
+        uint64_t                    m_DbSizeNotificationInterval {};
         size_t                      m_DbSizeHeapLimit {};
         size_t                      m_DbSizeLimit {};
         std::atomic<size_t>         m_DbSizeEstimate {};
@@ -112,5 +119,6 @@ namespace ARIASDK_NS_BEGIN {
     };
 
 
-} ARIASDK_NS_END
+} MAT_NS_END
 #endif
+

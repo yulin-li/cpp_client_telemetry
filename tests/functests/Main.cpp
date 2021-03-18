@@ -1,4 +1,7 @@
-// Copyright (c) Microsoft. All rights reserved.
+//
+// Copyright (c) 2015-2020 Microsoft Corporation and Contributors.
+// SPDX-License-Identifier: Apache-2.0
+//
 
 #include "common/Common.hpp"
 
@@ -10,11 +13,13 @@ class TestStatusLogger : public testing::EmptyTestEventListener {
   public:
     virtual void OnTestStart(testing::TestInfo const& test) override
     {
+        std::ignore = test;
         LOG_INFO("--- %s.%s", test.test_case_name(), test.name());
     }
 
     virtual void OnTestEnd(testing::TestInfo const& test) override
     {
+        std::ignore = test;
         LOG_INFO("=== %s.%s [%s]", test.test_case_name(), test.name(), test.result()->Passed() ? "OK" : "FAILED");
     }
 };
@@ -42,3 +47,4 @@ int MAIN_CDECL main(int argc, char** argv)
 
     return result;
 }
+

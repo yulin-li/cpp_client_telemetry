@@ -1,4 +1,7 @@
-// Copyright (c) Microsoft. All rights reserved.
+//
+// Copyright (c) 2015-2020 Microsoft Corporation and Contributors.
+// SPDX-License-Identifier: Apache-2.0
+//
 #ifndef DEVICEINFORMATIONIMPL_HPP
 #define DEVICEINFORMATIONIMPL_HPP
 
@@ -16,7 +19,7 @@ namespace PAL_NS_BEGIN {
     class DeviceInformationImpl : public IDeviceInformation
     {
     public:
-        static std::shared_ptr<IDeviceInformation> Create();
+        static std::shared_ptr<IDeviceInformation> Create(MAT::IRuntimeConfig& configuration);
 
         virtual int RegisterInformationChangedCallback(PAL::IPropertyChangedCallback* pCallback) override
         {
@@ -38,7 +41,7 @@ namespace PAL_NS_BEGIN {
         virtual PowerSource GetPowerSource() const override { return m_powerSource; }
         virtual std::string GetDeviceTicket() const override;
 
-        DeviceInformationImpl();
+        DeviceInformationImpl(MAT::IRuntimeConfig& configuration);
         virtual ~DeviceInformationImpl();
 
         // Disable copy constructor and assignment operator.
@@ -61,3 +64,4 @@ namespace PAL_NS_BEGIN {
 } PAL_NS_END
 
 #endif
+

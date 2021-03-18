@@ -1,8 +1,9 @@
-// Copyright (c) Microsoft. All rights reserved.
+//
+// Copyright (c) 2015-2020 Microsoft Corporation and Contributors.
+// SPDX-License-Identifier: Apache-2.0
+//
 #ifndef IECSCLIENT_HPP
 #define IECSCLIENT_HPP
-
-#include "Version.hpp"
 
 #include "ctmacros.hpp"
 #include "ILogger.hpp"
@@ -357,3 +358,4 @@ namespace Microsoft {
 namespace MAEE = Microsoft::Applications::Experimentation::ECS;
 
 #endif
+

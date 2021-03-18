@@ -1,4 +1,7 @@
-// Copyright (c) Microsoft. All rights reserved.
+//
+// Copyright (c) 2015-2020 Microsoft Corporation and Contributors.
+// SPDX-License-Identifier: Apache-2.0
+//
 #ifndef TELEMETRYSYSTEMBASE_HPP
 #define TELEMETRYSYSTEMBASE_HPP
 
@@ -7,9 +10,7 @@
 #include "stats/Statistics.hpp"
 #include <functional>
 
-namespace ARIASDK_NS_BEGIN {
-
-    // typedef std::function<bool(void)>                       StateHandler;
+namespace MAT_NS_BEGIN {
 
     typedef std::function<IncomingEventContextPtr const&>   EventHandler;
 
@@ -39,6 +40,7 @@ namespace ARIASDK_NS_BEGIN {
             onStop   = []() { return true; };
             onPause  = []() { return true; };
             onResume = []() { return true; };
+            onCleanup  = []() { return true; };
         };
         
         /// <summary>
@@ -101,6 +103,17 @@ namespace ARIASDK_NS_BEGIN {
             }
         };
 
+        /// <summary>
+        /// Cleanups pending events upload
+        /// </summary>
+        virtual void cleanup() override
+        {
+            if (m_isStarted)
+            {
+                onCleanup();       
+            }
+        };
+
         // TODO: [MG] - consider for removal
         virtual void handleFlushTaskDispatcher() override
         {
@@ -149,6 +162,11 @@ namespace ARIASDK_NS_BEGIN {
             return m_logManager.GetSemanticContext();
         }
 
+        EventsUploadContextPtr createEventsUploadContext() override
+        {
+            return std::make_shared<EventsUploadContext>();
+        }
+
         virtual bool DispatchEvent(DebugEvent evt) override
         {
             return m_logManager.DispatchEvent(std::move(evt));
@@ -168,6 +186,7 @@ namespace ARIASDK_NS_BEGIN {
         std::function<bool(void)>                                  onStop;
         std::function<bool(void)>                                  onPause;
         std::function<bool(void)>                                  onResume;
+        std::function<bool(void)>                                  onCleanup;
 
     // TODO: [MG] - clean this up - get rid of RouteSource
     public:
@@ -176,6 +195,7 @@ namespace ARIASDK_NS_BEGIN {
 
     };
 
-} ARIASDK_NS_END
+} MAT_NS_END
 
 #endif
+

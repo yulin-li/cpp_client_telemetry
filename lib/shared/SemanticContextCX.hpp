@@ -1,3 +1,7 @@
+//
+// Copyright (c) 2015-2020 Microsoft Corporation and Contributors.
+// SPDX-License-Identifier: Apache-2.0
+//
 #pragma once
 #include "PlatformHelpers.h"
 #include "SchemaStub.hpp"
@@ -10,6 +14,11 @@ namespace Microsoft {
             {
                 public interface class ISemanticContext
                 {
+                    property String^ AppEnv
+                    {
+                        virtual void set(String^ appEnv) = 0;
+                    }
+
                     property String^ AppId
                     {
                         virtual void set(String^ appId) = 0;
@@ -98,6 +107,11 @@ namespace Microsoft {
                 ref class SemanticContextImpl sealed : ISemanticContext
                 {
                 public:
+
+                    // Inherited via ISemanticContext
+                    property String ^ AppEnv {
+                         virtual void set(String ^ appEnv);
+                    }
 
                     // Inherited via ISemanticContext
                     property String^ AppId
@@ -207,3 +221,4 @@ namespace Microsoft {
         }
     }
 }
+
