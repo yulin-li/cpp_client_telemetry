@@ -309,3 +309,4 @@ sysinfo_sources_impl::sysinfo_sources_impl() : sysinfo_sources()
     }
 
 }
+

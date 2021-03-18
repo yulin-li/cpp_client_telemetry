@@ -6,7 +6,6 @@
 #include "sysinfo_utils_apple.hpp"
 #import <Foundation/Foundation.h>
 #import <UIKit/UIKit.h>
-#include <sys/utsname.h>
 
 std::string GetDeviceModel()
 {

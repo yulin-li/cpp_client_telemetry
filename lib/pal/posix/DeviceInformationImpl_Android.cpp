@@ -260,3 +260,4 @@ Java_com_microsoft_applications_events_HttpClient_onPowerChange(JNIEnv* env,
         PAL::AndroidDeviceInformationConnector::setModel(std::string(start, end));
         env->ReleaseStringUTFChars(model, start);
     }
+

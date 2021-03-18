@@ -24,3 +24,4 @@ public:
 };
 
 #endif /* LIB_PAL_POSIX_SYSINFO_SOURCES_IMPL_HPP_ */
+

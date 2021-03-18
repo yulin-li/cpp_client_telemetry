@@ -99,12 +99,6 @@ else()
         )
 endif()
 
-add_library(maesdk SHARED IMPORTED)
-set_target_properties(maesdk PROPERTIES
-        IMPORTED_LOCATION "${SDK_ROOT}/lib/android_build/maesdk/build/intermediates/cmake/debug/obj/${CMAKE_ANDROID_ARCH_ABI}/libmaesdk.so"
-        IMPORTED_LOCATION_Release "${SDK_ROOT}/lib/android_build/maesdk/build/intermediates/cmake/debug/obj/${CMAKE_ANDROID_ARCH_ABI}/libmaesdk.so")
-
-
 # Searches for a specified prebuilt library and stores the path as a
 # variable. Because CMake includes system libraries in the search path by
 # default, you only need to specify the name of the public NDK library

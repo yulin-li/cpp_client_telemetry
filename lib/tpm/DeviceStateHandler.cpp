@@ -147,3 +147,4 @@ void DeviceStateHandler::OnChanged(
  }
 
 } MAT_NS_END
+

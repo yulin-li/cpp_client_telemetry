@@ -207,3 +207,4 @@ extern "C" JNIEXPORT void JNICALL Java_com_microsoft_applications_events_HttpCli
         PAL::AndroidSystemInformationConnector::s_time_zone,
         time_zone);
 }
+
