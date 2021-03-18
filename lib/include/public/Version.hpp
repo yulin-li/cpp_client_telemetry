@@ -10,7 +10,7 @@
 #define BUILD_VERSION 3,5,67,1
 
 #ifndef RESOURCE_COMPILER_INVOKED
-#include <ctmacros.hpp>
+#include "ctmacros.hpp"
 #include <stdint.h>
 
 namespace MAT_NS_BEGIN {
