@@ -108,6 +108,8 @@ namespace PAL_NS_BEGIN
 
         bool RegisterIkeyWithWindowsTelemetry(std::string const& ikeyin, int storageSize, int uploadQuotaSize);
 
+        const std::string LiveEventInspectionEndpoint() const;
+
         MATSDK_LOG_DECL_COMPONENT_CLASS();
 
     private:
@@ -237,6 +239,11 @@ namespace PAL_NS_BEGIN
     inline bool RegisterIkeyWithWindowsTelemetry(std::string const& ikeyin, int storageSize, int uploadQuotaSize)
     {
         return GetPAL().RegisterIkeyWithWindowsTelemetry(ikeyin, storageSize, uploadQuotaSize);
+    }
+
+    inline const std::string LiveEventInspectionEndpoint()
+    {
+        return GetPAL().LiveEventInspectionEndpoint();
     }
 
 } PAL_NS_END

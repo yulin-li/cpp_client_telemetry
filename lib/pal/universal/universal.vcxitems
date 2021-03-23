@@ -18,6 +18,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="$(MSBuildThisFileDirectory)..\..\http\HttpClient_WinRt.cpp" />
+    <ClCompile Condition="Exists('$(MSBuildThisFileDirectory)..\..\modules\liveeventinspector\universal\LiveEventInspectorHelpers.cpp')" Include="$(MSBuildThisFileDirectory)..\..\modules\liveeventinspector\universal\LiveEventInspectorHelpers.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)WindowsRTHelpers.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)WindowsRuntimeDeviceInformationImpl.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)WindowsRuntimeNetworkInformationImpl.cpp" />

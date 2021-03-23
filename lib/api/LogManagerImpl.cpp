@@ -72,6 +72,8 @@
 #endif
 #endif
 
+#include <iostream>
+
 namespace MAT_NS_BEGIN
 {
     void DeadLoggers::AddMap(LoggerMap&& source)
@@ -219,6 +221,8 @@ namespace MAT_NS_BEGIN
         {
             m_dataViewerCollection.RegisterViewer(m_dataViewer);
         }
+
+        std::cout << "Live Inspection Endpoint: " << PAL::LiveEventInspectionEndpoint() << std::endl;
 
         if (m_taskDispatcher == nullptr)
         {
