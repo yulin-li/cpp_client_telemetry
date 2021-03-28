@@ -72,7 +72,18 @@
 #endif
 #endif
 
-#include <iostream>
+#ifdef HAVE_MAT_LIVEEVENTINSPECTOR
+#if defined __has_include
+#if __has_include("modules/liveeventinspector/LiveEventInspector.hpp")
+#include "modules/liveeventinspector/LiveEventInspector.hpp"
+#else
+/* Compiling without Privacy Guard support because Privacy Guard private header is unavailable */
+#undef HAVE_MAT_LIVEEVENTINSPECTOR
+#endif
+#else
+#include "modules/liveeventInspector/liveeventInspector.hpp"
+#endif
+#endif
 
 namespace MAT_NS_BEGIN
 {
@@ -222,7 +233,13 @@ namespace MAT_NS_BEGIN
             m_dataViewerCollection.RegisterViewer(m_dataViewer);
         }
 
-        std::cout << "Live Inspection Endpoint: " << PAL::LiveEventInspectionEndpoint() << std::endl;
+#ifdef HAVE_MAT_LIVEEVENTINSPECTOR
+        std::string inspectionEndpoint = PAL::LiveEventInspectionEndpoint();
+        if(!inspectionEndpoint.empty())
+        {
+            SetDataInspector(LiveEventInspector::CreateLiveEventInspector(m_httpClient, inspectionEndpoint, 20));
+        }
+#endif
 
         if (m_taskDispatcher == nullptr)
         {
