@@ -542,6 +542,7 @@ namespace ARIASDK_NS_BEGIN {
     TransmitProfiles::~TransmitProfiles()
     {
 #ifdef _WIN32
+#if !defined(__clang__)
         // This silly code is required for vs2013 compiler workaround
         // https://connect.microsoft.com/VisualStudio/feedback/details/800104/
         __try {
@@ -552,6 +553,7 @@ namespace ARIASDK_NS_BEGIN {
         {
             // This compiler bug costed me good relationship with OneDrive team :(
         }
+#endif  // !defined(__clang__)
 #endif
     }
 #ifdef _MSC_VER
